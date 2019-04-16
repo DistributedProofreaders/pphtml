@@ -2,14 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-  pphtml.py
-  GPL
+    pphtml.py
+    GPL
+
+    revision history:
+    2019.04.16 Python version incorporated into Workbench
 """
 
 # pylint: disable=C0103, R0912, R0915
 # pylint: disable=too-many-instance-attributes, too-many-locals, no-self-use
 # pylint: disable=bad-continuation, too-many-lines, too-many-public-methods
-
 
 import sys
 import os
@@ -37,7 +39,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.04.12"
+        self.VERSION = "2019.04.16"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -184,7 +186,7 @@ class Pphtml:
         # make sure all are images
         for filename in self.onlyfiles:
             try:
-                with Image.open("images/" + filename) as im:
+                with Image.open(self.sdir + "/images/" + filename) as im:
                     self.filedata.append(
                         "{}|{}|{}|{}".format(
                             filename, im.format, "%dx%d" % im.size, im.mode
@@ -252,55 +254,6 @@ class Pphtml:
                     r[0] = re.sub("pass", "☰FAIL☷", r[0])
         self.apl(r)
 
-    def altTags(self):
-        """
-        all img tags get evaluated for alt behavior
-        """
-        r = []
-        r.append("[pass] image alt tag tests")
-        alt_is_missing = 0
-        alt_is_empty = 0
-        alt_is_blank = 0
-        alt_is_text = 0
-        maxalttext = ""
-        maxalttextlen = 0
-        for i, line in enumerate(self.wb):
-            if "<img" in line:
-                j = i + 1
-                while j < len(self.wb) and not line.endswith(">"):
-                    line = line + " " + self.wb[j]
-                    j += 1
-                a01 = re.findall(r"alt=", line)
-                if not a01:
-                    alt_is_missing += 1
-                a01 = re.findall(r"alt=['\"]['\"]", line)
-                alt_is_empty += len(a01)
-                a02 = re.findall(r"alt=['\"]\s+['\"]", line)
-                alt_is_blank += len(a02)
-                a03 = re.findall(r"alt=(['\"])([^\1]+)\1", line)
-                alt_is_text += len(a03)
-                for t in a03:
-                    if len(t) > maxalttextlen:
-                        maxalttextlen = len(t)
-                        maxalttext = t
-        if alt_is_missing > 0:
-            r[0] = re.sub("pass", "☰FAIL☷", r[0])
-            r.append("       some images have no alt tag")
-        if alt_is_blank > 0:
-            r[0] = re.sub("pass", "☰FAIL☷", r[0])
-            r.append("       some images have non-empty blank alt tags")
-        if maxalttextlen >= 10:
-            r[0] = re.sub("pass", "☰warn☷", r[0])
-            r.append("       alt text too long ({} chars)".format(maxalttextlen))
-            r.append("         {}".format(maxalttext))
-
-        r.append("       {} images with missing alt tags".format(alt_is_missing))
-        r.append("       {} images with empty alt tags".format(alt_is_empty))
-        r.append("       {} images with blank alt tags".format(alt_is_blank))
-        r.append("       {} images with textual alt tags".format(alt_is_text))
-        r.append("       max alt text length: {}".format(maxalttextlen))
-        self.apl(r)
-
     def allImages200k(self):
         """
         warn if any image larger than 200K
@@ -310,7 +263,7 @@ class Pphtml:
         r.append("[pass] all images have file size &lt;= 200K")
         for fdata in self.filedata:
             fname = fdata.split("|")[0]
-            fsize = os.path.getsize("images/{}".format(fname))
+            fsize = os.path.getsize(self.sdir + "/images/{}".format(fname))
             self.fsizes.append([fname, fsize])
         self.fsizes.sort(key=lambda tup: tup[1], reverse=True)
         toolargekb = []
@@ -430,7 +383,6 @@ class Pphtml:
         self.scanImages()
         self.allImagesUsed()
         self.allTargetsAvailable()
-        self.altTags()
         self.allImages200k()
         self.coverImage()
         self.otherImage()
@@ -461,10 +413,15 @@ class Pphtml:
         r = []
         r.append("[pass] link to cover image for epub")
         coverlink = False
-        for line in self.wb:
-            if "images/cover.jpg" in line and "link" in line:
+        i = 0
+        while i < len(self.wb):
+            while self.wb[i].count("<") != self.wb[i].count(">"):
+                self.wb[i] = self.wb[i] + " " + self.wb[i + 1]
+                del self.wb[i + 1]
+            if "images/cover.jpg" in self.wb[i] and "link" in self.wb[i]:
                 coverlink = True
                 break
+            i += 1
         if not coverlink:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
             for line in self.wb:
@@ -792,7 +749,7 @@ class Pphtml:
                 count += 1
         if count != 0:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
-            r.append("  number of <pre> tags (should be 0): {}".format(count))
+            r.append("  number of &lt;pre> tags (should be 0): {}".format(count))
         self.apl(r)
 
     def charsetCheck(self):
@@ -809,7 +766,7 @@ class Pphtml:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
             r.append("       no charset found")
         else:
-            if "UTF-8" not in cline:
+            if "UTF-8" not in cline and "utf-8" not in cline:
                 r[0] = re.sub("pass", "☰FAIL☷", r[0])
                 r.append("       " + (cline.replace("<", "&lt;")).strip())
         self.apl(r)
@@ -844,6 +801,55 @@ class Pphtml:
 
         self.apl(r)
 
+    def altTags(self):
+        """
+        all img tags get evaluated for alt behavior
+        """
+        r = []
+        r.append("[pass] image alt tag tests")
+        alt_is_missing = 0
+        alt_is_empty = 0
+        alt_is_blank = 0
+        alt_is_text = 0
+        maxalttext = ""
+        maxalttextlen = 0
+        for i, line in enumerate(self.wb):
+            if "<img" in line:
+                j = i + 1
+                while j < len(self.wb) and not line.endswith(">"):
+                    line = line + " " + self.wb[j]
+                    j += 1
+                a01 = re.findall(r"alt=", line)
+                if not a01:
+                    alt_is_missing += 1
+                a01 = re.findall(r"alt=['\"]['\"]", line)
+                alt_is_empty += len(a01)
+                a02 = re.findall(r"alt=['\"]\s+['\"]", line)
+                alt_is_blank += len(a02)
+                a03 = re.findall(r"alt=(['\"])([^\1]+)\1", line)
+                alt_is_text += len(a03)
+                for t in a03:
+                    if len(t) > maxalttextlen:
+                        maxalttextlen = len(t)
+                        maxalttext = t
+        if alt_is_missing > 0:
+            r[0] = re.sub("pass", "☰FAIL☷", r[0])
+            r.append("       some images have no alt tag")
+        if alt_is_blank > 0:
+            r[0] = re.sub("pass", "☰FAIL☷", r[0])
+            r.append("       some images have non-empty blank alt tags")
+        if maxalttextlen >= 10:
+            r[0] = re.sub("pass", "☰warn☷", r[0])
+            r.append("       alt text too long ({} chars)".format(maxalttextlen))
+            r.append("         {}".format(maxalttext))
+
+        r.append("       {} images with missing alt tags".format(alt_is_missing))
+        r.append("       {} images with empty alt tags".format(alt_is_empty))
+        r.append("       {} images with blank alt tags".format(alt_is_blank))
+        r.append("       {} images with textual alt tags".format(alt_is_text))
+        r.append("       max alt text length: {}".format(maxalttextlen))
+        self.apl(r)
+
     def ppvTests(self):
         """
         consolidated tests particular to DP PPV
@@ -857,6 +863,7 @@ class Pphtml:
         self.preTags()
         self.charsetCheck()
         self.DTDcheck()
+        self.altTags()
         self.headingOutline()
 
     # --------------------------------------------------------------------------------------
@@ -975,9 +982,11 @@ class Pphtml:
             t[i] = re.sub(r"^[^\.]\p{L}+(\.\p{L}+)", r"\1", t[i])
 
         for s in t:
+            s = s.replace(",", " ")  # splits h1,h2,h3 {}
             utmp = s.split(" ")  # splits .linegroup .group
             for u00 in utmp:
-                if u00.startswith("."):
+                # classes that are not pseudo-classes
+                if u00.startswith(".") and ":" not in u00:
                     self.udefcss[u00[1:]] = 1
 
     def resolve_CSS(self):
@@ -1011,16 +1020,16 @@ class Pphtml:
             r.append("   " + s)
 
         # CSS used in a class but not defined
-        badk = []
+        badk = {}
         for key in self.usedcss:
             if key not in self.udefcss:
-                badk.append(key)
+                badk[key] = 1
         if badk:
             s = ""
-            r[0] = re.sub(r"pass", "☰warn☷", r[0])
+            r[0] = re.sub(r"info", "☰warn☷", r[0])
             r.append("  not defined but used:")
             for k in badk:
-                s = s + " " + key
+                s = s + " " + k
                 if len(s) > 60:
                     r.append("    " + s.strip())
                     s = ""
@@ -1085,7 +1094,7 @@ class Pphtml:
             "<head>",
             '<meta charset="utf-8">',
             '<meta name=viewport content="width=device-width, initial-scale=1">',
-            "<title>pphtml-py report</title>",
+            "<title>pphtml report</title>",
             '<style type="text/css">',
             "body { margin-left: 1em;}",
             ".red { color:red; }",
