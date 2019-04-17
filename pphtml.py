@@ -7,6 +7,7 @@
 
     revision history:
     2019.04.16 Python version incorporated into Workbench
+    2019.04.17 changed file encoding test format/content
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -683,6 +684,21 @@ class Pphtml:
                 count += 1
         self.apl(r)
 
+    def langCheck(self):
+        """
+        show user what document claims is the language
+        """
+        r = []
+        count = 0
+        r.append("[user] please confirm the language code:")
+        t = "  none specified"
+        for line in self.wb:
+            if re.search(r"<html.*?lang=", line):
+                t = line.replace("<", "&lt;")
+                break
+        r.append("       {}".format(t))
+        self.apl(r)
+
     def headingOutline(self):
         """
         show document
@@ -749,7 +765,7 @@ class Pphtml:
                 count += 1
         if count != 0:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
-            r.append("  number of &lt;pre> tags (should be 0): {}".format(count))
+            r.append("       number of &lt;pre> tags (should be 0): {}".format(count))
         self.apl(r)
 
     def charsetCheck(self):
@@ -757,7 +773,7 @@ class Pphtml:
         character set should be UTF-8
         """
         r = []
-        r.append("[pass] charset is UTF-8")
+        r.append("[info] charset check")
         cline = ""
         for line in self.wb:
             if "charset" in line:
@@ -766,9 +782,10 @@ class Pphtml:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
             r.append("       no charset found")
         else:
-            if "UTF-8" not in cline and "utf-8" not in cline:
-                r[0] = re.sub("pass", "☰FAIL☷", r[0])
-                r.append("       " + (cline.replace("<", "&lt;")).strip())
+        	r.append("       " + (cline.replace("<", "&lt;")).strip())
+        info = os.popen("file {}".format(self.srcfile)).read()
+        info = info.split("/")[2]
+        r.append("       " + info.strip())
         self.apl(r)
 
     def DTDcheck(self):
@@ -864,6 +881,7 @@ class Pphtml:
         self.charsetCheck()
         self.DTDcheck()
         self.altTags()
+        self.langCheck()
         self.headingOutline()
 
     # --------------------------------------------------------------------------------------
@@ -979,7 +997,7 @@ class Pphtml:
         # remove
         # "hr.pb" -> ".pb"
         for i, _ in enumerate(t):
-            t[i] = re.sub(r"^[^\.]\p{L}+(\.\p{L}+)", r"\1", t[i])
+            t[i] = re.sub(r"\p{L}+(\.\p{L}+)", r"\1", t[i])
 
         for s in t:
             s = s.replace(",", " ")  # splits h1,h2,h3 {}
