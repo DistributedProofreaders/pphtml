@@ -8,6 +8,10 @@
     revision history:
     2019.04.16 Python version incorporated into Workbench
     2019.04.17 changed file encoding test format/content
+    2019.05.14 CSS to handle a.b.c; class chapter scanning; warn to info on h2 count
+                parse start of css more reliably
+    2019.05.19 detect and report runaway CSS
+    2019.05.20 changed wording and always report h2 count, class chapter count
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -40,7 +44,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.04.16"
+        self.VERSION = "2019.05.20"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -782,10 +786,10 @@ class Pphtml:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
             r.append("       no charset found")
         else:
-        	r.append("       " + (cline.replace("<", "&lt;")).strip())
+            r.append("       claimed: " + (cline.replace("<", "&lt;")).strip())
         info = os.popen("file {}".format(self.srcfile)).read()
-        info = info.split("/")[2]
-        r.append("       " + info.strip())
+        info = info.split(":")[1].strip()
+        r.append("       detected: " + info.strip())
         self.apl(r)
 
     def DTDcheck(self):
@@ -910,19 +914,16 @@ class Pphtml:
         line length for epub must be less than 2000
         """
         r = []
-        r.append("[pass] class chapter count matches h2 count")
+        r.append("[info] class chapter count and h2 count")
         cchcount = 0
         h2count = 0
         for line in self.wb:
-            n = re.findall(r"class=[\"'].*?chapter.*?[\"']", line)
+            # n = re.findall(r"class=[\"'].*?chapter.*?[\"']", line)
+            n = re.findall(r"class=[\"'][^\"']*?chapter.*?[\"']", line)
             cchcount += len(n)
             n = re.findall(r"<h2", line)
             h2count += len(n)
-        if cchcount != h2count:
-            r[0] = re.sub(r"pass", "☰warn☷", r[0])
-            r.append(
-                "       {} class chapter, {} &lt;h2> tags".format(cchcount, h2count)
-            )
+        r.append("       {} class chapter, {} &lt;h2> tags".format(cchcount, h2count))
         self.apl(r)
 
     def pgTests(self):
@@ -956,7 +957,8 @@ class Pphtml:
         """
         t = []
         i = 0
-        while "text/css" not in self.wb[i] and i < len(self.wb):
+
+        while not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])) and i < len(self.wb):
             i += 1
         i += 1
 
@@ -967,9 +969,15 @@ class Pphtml:
         # unwrap CSS
         i = 0
         while i < len(t):
-            while t[i].count("{") != t[i].count("}"):
+            while i < len(t)-1 and t[i].count("{") != t[i].count("}"):
                 t[i] = t[i] + " " + t[i + 1]
                 del t[i + 1]
+            if t[i].count("{") != t[i].count("}") :
+                s = re.sub(r"\s+", " ", t[i])
+                s = s.strip()
+                if len(s) > 40:
+                    s = s[0:40] + "..."
+                self.fatal("runaway CSS block near: {}".format(s))
             t[i] = re.sub(r"\s+", " ", t[i])
             t[i] = t[i].strip()
             i += 1
@@ -996,10 +1004,14 @@ class Pphtml:
 
         # remove
         # "hr.pb" -> ".pb"
+        # div.poem.apdx -> ".poem.apdx" which will become ".poem .apdx" below
         for i, _ in enumerate(t):
             t[i] = re.sub(r"\p{L}+(\.\p{L}+)", r"\1", t[i])
 
         for s in t:
+            s = s.replace(".", " .")  # ".poem.apdx" becomes " .poem .apdx"
+            s = s.replace("  "," ")
+            s = s.strip()
             s = s.replace(",", " ")  # splits h1,h2,h3 {}
             utmp = s.split(" ")  # splits .linegroup .group
             for u00 in utmp:
