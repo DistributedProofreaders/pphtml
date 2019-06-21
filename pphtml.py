@@ -430,8 +430,8 @@ class Pphtml:
             if "images/cover.jpg" in self.wb[i] and "link" in self.wb[i]:
                 coverlink = True
                 break
-            if "id='coverpage'" in self.wb[i] or 'id="coverpage"' in self.wb[i]
-            	coverlink = True
+            if "id='coverpage'" in self.wb[i] or "id=\"coverpage\"" in self.wb[i]:
+                coverlink = True
                 break
             i += 1
         if not coverlink:
