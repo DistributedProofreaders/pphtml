@@ -12,6 +12,9 @@
                 parse start of css more reliably
     2019.05.19 detect and report runaway CSS
     2019.05.20 changed wording and always report h2 count, class chapter count
+    2019.05.21 adjusted info/warn/FAIL in CSS
+    2019.05.29 added h5 and h6 header reporting
+    2019.07.19 simplified cover image checks
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -44,7 +47,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.05.20"
+        self.VERSION = "2019.07.19"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -420,20 +423,12 @@ class Pphtml:
         coverlink = False
         i = 0
         while i < len(self.wb):
-            while self.wb[i].count("<") != self.wb[i].count(">"):
-                self.wb[i] = self.wb[i] + " " + self.wb[i + 1]
-                del self.wb[i + 1]
-            if "images/cover.jpg" in self.wb[i] and "link" in self.wb[i]:
+            if "coverpage" in self.wb[i]:
                 coverlink = True
                 break
             i += 1
         if not coverlink:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
-            for line in self.wb:
-                if "coverpage" in line and "link" in line:
-                    t = (line.replace("<", "&lt;")).strip()
-                    r.append("  {}".format(t))
-
         r2 = []
         for k, v in self.links.items():
             t = v.split(" ")  # look for multiple lines with same target
@@ -680,7 +675,7 @@ class Pphtml:
             if m:  # report only first five
                 line = line.replace("<", "&lt;")
                 if count == 0:
-                    r[0] = re.sub("pass", "☰FAIL☷", r[0])
+                    r[0] = "[☰warn☷] missing space before /&gt; closing tag"
                 if count < 3:
                     r.append(" " * 9 + line.strip())
                 if count == 5:
@@ -755,6 +750,28 @@ class Pphtml:
                 t = re.sub("<.*?>", " ", t)
                 t = re.sub(" +", " ", t)
                 r.append("             h4: {}".format(t))
+
+            m = re.search("<h5.*?>", line)
+            if m:
+                t = line
+                j = i
+                while "</h5>" not in self.wb[j]:
+                    j += 1
+                    t += " " + self.wb[j]
+                t = re.sub("<.*?>", " ", t)
+                t = re.sub(" +", " ", t)
+                r.append("               h5: {}".format(t))
+
+            m = re.search("<h6.*?>", line)
+            if m:
+                t = line
+                j = i
+                while "</h6>" not in self.wb[j]:
+                    j += 1
+                    t += " " + self.wb[j]
+                t = re.sub("<.*?>", " ", t)
+                t = re.sub(" +", " ", t)
+                r.append("                 h6: {}".format(t))                
         self.apl(r)
 
     def preTags(self):
@@ -1050,13 +1067,14 @@ class Pphtml:
             r.append("   " + s)
 
         # CSS used in a class but not defined
+        css_used_not_defined = False
         badk = {}
         for key in self.usedcss:
             if key not in self.udefcss:
                 badk[key] = 1
         if badk:
+            css_used_not_defined = True
             s = ""
-            r[0] = re.sub(r"info", "☰warn☷", r[0])
             r.append("  not defined but used:")
             for k in badk:
                 s = s + " " + k
@@ -1067,11 +1085,13 @@ class Pphtml:
                 r.append("   " + s)
 
         # CSS defined but not used in a class
+        css_defined_not_used = False
         badk = []
         for key in self.udefcss:
             if key not in self.usedcss:
                 badk.append(key)
         if badk:
+            css_defined_not_used = True
             s = ""
             r.append("  defined but not used:")
             for k in badk:
@@ -1081,6 +1101,16 @@ class Pphtml:
                     s = ""
             if s != "":
                 r.append("   " + s)
+
+        # adjust the message 
+
+        if css_used_not_defined:
+            r[0] = re.sub(r"info", "☰FAIL☷", r[0])
+            r[0] = r[0] + " (CSS used but not defined)"
+        else:
+            if css_defined_not_used:
+                r[0] = re.sub(r"info", "☰warn☷", r[0])
+                r[0] = r[0] + " (CSS defined but not used)"
 
         self.apl(r)
 
