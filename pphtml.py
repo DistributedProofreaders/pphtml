@@ -427,9 +427,6 @@ class Pphtml:
             if "coverpage" in self.wb[i]:
                 coverlink = True
                 break
-            if "id='coverpage'" in self.wb[i] or "id=\"coverpage\"" in self.wb[i]:
-                coverlink = True
-                break
             i += 1
         if not coverlink:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
