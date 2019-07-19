@@ -416,7 +416,8 @@ class Pphtml:
 
     def linkToCover(self):
         """
-        image test
+        either: provide a link in the document head, or
+        put an id of coverpage on the img tag
         """
         r = []
         r.append("[pass] link to cover image for epub")
@@ -424,6 +425,9 @@ class Pphtml:
         i = 0
         while i < len(self.wb):
             if "coverpage" in self.wb[i]:
+                coverlink = True
+                break
+            if "id='coverpage'" in self.wb[i] or "id=\"coverpage\"" in self.wb[i]:
                 coverlink = True
                 break
             i += 1
