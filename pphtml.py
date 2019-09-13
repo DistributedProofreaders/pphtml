@@ -967,7 +967,8 @@ class Pphtml:
                 for mx in m:
                     mx2 = mx.split(" ")
                     for mx3 in mx2:
-                        self.usedcss[mx3] = 1
+                        if mx3 != "":
+                             self.usedcss[mx3] = 1                    
 
     def find_defined_CSS(self):
         """
