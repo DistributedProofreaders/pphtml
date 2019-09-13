@@ -57,6 +57,10 @@ class Pphtml:
         self.udefcss = {}  # user defined CSS
         self.usedcss = {}  # CSS used by user
 
+    def crash(self):
+        self.saveReport()
+        exit(1)
+    
     def fatal(self, message):
         """
         display (fatal) error and exit
@@ -609,9 +613,14 @@ class Pphtml:
             m1 = re.search(r"<h1", line)
             if m1:
                 s = ""
-                while "</h1>" not in self.wb[i]:
-                    s += self.wb[i]
-                    i += 1
+                try:
+                    while "</h1>" not in self.wb[i]:
+                        s += self.wb[i]
+                        i += 1
+                except:
+                    r.append("FATAL: no &lt;/h1> found")
+                    self.apl(r)
+                    self.crash()
                 s += self.wb[i]
                 m1 = re.search(r"<h1.*?>(.*?)<\/h1>", s)
                 if m1:
@@ -820,6 +829,8 @@ class Pphtml:
         cline = ""
         for i, line in enumerate(self.wb):
             if "DTD" in line:
+                # find the DTD line and grab the next one
+                # where we expect it to end
                 cline = line
                 cline2 = self.wb[i + 1]
                 break
@@ -827,17 +838,23 @@ class Pphtml:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
             r.append("       no Document Type Definition found")
         else:
+            # have the first line. if it's not a complete line, then
+            # add the second with a '|'
             if not cline.endswith(">"):
                 cline = cline + "|" + cline2
             # error if HTML version other than XHTML 1.0 Strict or 1.1
+            # relies on the '|'
             if "XHTML 1.0 Strict" not in cline and "XHTML 1.1" not in cline:
                 r[0] = re.sub("pass", "☰warn☷", r[0])
                 r.append("       HTML version should be XHTML 1.0 Strict or 1.1")
                 t001 = re.sub(r"\s+", " ", cline)
                 t001 = re.sub(r"<", "&lt;", t001)
-                t002 = t001.split("|")
-                r.append("         {}".format(t002[0].strip()))
-                r.append("         {}".format(t002[1].strip()))
+                if "|" in t001:
+                    t002 = t001.split("|")
+                    r.append("         {}".format(t002[0].strip()))
+                    r.append("         {}".format(t002[1].strip()))
+                else:
+                    r.append("         {}".format(t001.strip()))
 
         self.apl(r)
 
