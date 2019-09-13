@@ -15,6 +15,7 @@
     2019.05.21 adjusted info/warn/FAIL in CSS
     2019.05.29 added h5 and h6 header reporting
     2019.07.19 simplified cover image checks
+    2019.09.13 handle misformed CSS with leading spaces in def
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -47,7 +48,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.07.19"
+        self.VERSION = "2019.09.13"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
