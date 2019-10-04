@@ -16,6 +16,7 @@
     2019.05.29 added h5 and h6 header reporting
     2019.07.19 simplified cover image checks
     2019.09.13 handle misformed CSS with leading spaces in def
+    2019.10.03 allow name= or id= to specify target
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -48,7 +49,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.09.13"
+        self.VERSION = "2019.10.03"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -514,11 +515,30 @@ class Pphtml:
             for theid in theids:
                 id_count += 1
                 # have a link. put it in links map
+                # format is self.targets["ch1"] = "214"
+                # says the target "ch1" is on line "214"
+                # if the target "ch1" is on multiple lines, 
+                # self.targets["ch1"] = "214 378"
                 if theid in self.targets:
                     self.targets[theid] = "{} {}".format(self.targets[theid], i)
                 else:
                     self.targets[theid] = "{}".format(i)
+                    
+        # allow name='' as an alternate to id=''
+        for i, line in enumerate(self.wb):
+            theids = re.findall(r'name=["\'](.*?)["\']', line)
+            for theid in theids:
+                if theid in self.targets:
+                    # the id might already be in the map if it's there from an id=
+                    # it's common: id='ch1" name='ch1'
+                    # if it's a target on the same line, ignore it.
+                    if str(i) not in self.targets[theid]:
+                        self.targets[theid] = "{} {}".format(self.targets[theid], i)
+                else:
+                    self.targets[theid] = "{}".format(i)
+    
         for k, v in self.targets.items():
+            # if there is a space then we have multiple targets, which is an error
             t = v.split(" ")
             if len(t) > 1:
                 if not reported:
