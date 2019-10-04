@@ -16,7 +16,7 @@
     2019.05.29 added h5 and h6 header reporting
     2019.07.19 simplified cover image checks
     2019.09.13 handle misformed CSS with leading spaces in def
-    2019.10.03 allow name= or id= to specify target
+    2019.10.04 allow name= or id= to specify target, including over multiple lines
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -104,6 +104,25 @@ class Pphtml:
             self.fatal("loadFile: cannot open source file {}".format(self.srcfile))
         self.wb = wbuf.split("\n")
         self.wb = [s.rstrip() for s in self.wb]
+        
+        # if any tags span two or more lines, unwrap them and leave blank lines
+        # so the line counter stays correct
+        i = 0
+        while (i < len(self.wb)):
+            try:
+                lbc = self.wb[i].count('<')
+                rbc = self.wb[i].count('>')
+                consume = 1
+                while lbc != rbc:
+                    self.wb[i] = self.wb[i]+" "+self.wb[i+consume]
+                    self.wb[i+consume] = ""
+                    lbc = self.wb[i].count('<')
+                    rbc = self.wb[i].count('>')
+                    consume += 1
+            except:
+                pass
+            i += 1
+        
         self.wb.append("")  # ensure file end
         while empty.match(self.wb[-1]):
             self.wb.pop()
