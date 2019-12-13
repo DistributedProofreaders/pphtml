@@ -17,6 +17,7 @@
     2019.07.19 simplified cover image checks
     2019.09.13 handle misformed CSS with leading spaces in def
     2019.10.04 allow name= or id= to specify target, including over multiple lines
+    2019.12.13 ignore apparent targets in meta tags
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -49,7 +50,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.10.04"
+        self.VERSION = "2019.12.13"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -530,6 +531,8 @@ class Pphtml:
         reported = False
         id_count = 0
         for i, line in enumerate(self.wb):
+            if "<meta" in line:
+                continue
             theids = re.findall(r'id=["\'](.*?)["\']', line)
             for theid in theids:
                 id_count += 1
@@ -545,6 +548,8 @@ class Pphtml:
                     
         # allow name='' as an alternate to id=''
         for i, line in enumerate(self.wb):
+            if "<meta" in line:
+                continue
             theids = re.findall(r'name=["\'](.*?)["\']', line)
             for theid in theids:
                 if theid in self.targets:
