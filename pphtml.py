@@ -18,6 +18,7 @@
     2019.09.13 handle misformed CSS with leading spaces in def
     2019.10.04 allow name= or id= to specify target, including over multiple lines
     2019.12.13 ignore apparent targets in meta tags
+    2019.12.15 ignore ">" and "<" before <body> for tag unwrap code
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -50,7 +51,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.12.13"
+        self.VERSION = "2019.12.15"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -105,11 +106,21 @@ class Pphtml:
             self.fatal("loadFile: cannot open source file {}".format(self.srcfile))
         self.wb = wbuf.split("\n")
         self.wb = [s.rstrip() for s in self.wb]
-        
+              
         # if any tags span two or more lines, unwrap them and leave blank lines
         # so the line counter stays correct
         i = 0
+        past_body = False
         while (i < len(self.wb)):
+        
+            # ignore any ">" or "<" symbols that occur before the <body> tag
+            # this applies to anything in the CSS blocks.
+            if "<body" in self.wb[i]:
+                past_body = True
+            if not past_body:
+                i += 1
+                continue
+
             try:
                 lbc = self.wb[i].count('<')
                 rbc = self.wb[i].count('>')
