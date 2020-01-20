@@ -19,6 +19,7 @@
     2019.10.04 allow name= or id= to specify target, including over multiple lines
     2019.12.13 ignore apparent targets in meta tags
     2019.12.15 ignore ">" and "<" before <body> for tag unwrap code
+    2020.01.20 handle runaway heading tags
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -51,7 +52,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2019.12.15"
+        self.VERSION = "2020.01.20"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -768,76 +769,42 @@ class Pphtml:
         """
         show document
         """
+        
+        class Error(Exception):
+           """Base class for other exceptions"""
+           pass
+        class NestedHeadingError(Error):
+           """Raised when <h followed by another <h """
+           pass
+               
         r = []
         r.append("[info] document heading outline")
 
         for i, line in enumerate(self.wb):
-
-            m = re.search("<h1.*?>", line)
-            if m:
-                t = line
-                j = i
-                while "</h1>" not in self.wb[j]:
-                    j += 1
-                    t += " " + self.wb[j]
-                t = re.sub("<.*?>", " ", t)
-                t = re.sub(" +", " ", t)
-                r.append("       h1: {}".format(t))
-
-            m = re.search("<h2.*?>", line)
-            if m:
-                t = line
-                j = i
-                while "</h2>" not in self.wb[j]:
-                    j += 1
-                    t += " " + self.wb[j]
-                t = re.sub("<.*?>", " ", t)
-                t = re.sub(" +", " ", t)
-                r.append("         h2: {}".format(t))
-
-            m = re.search("<h3.*?>", line)
-            if m:
-                t = line
-                j = i
-                while "</h3>" not in self.wb[j]:
-                    j += 1
-                    t += " " + self.wb[j]
-                t = re.sub("<.*?>", " ", t)
-                t = re.sub(" +", " ", t)
-                r.append("           h3: {}".format(t))
-
-            m = re.search("<h4.*?>", line)
-            if m:
-                t = line
-                j = i
-                while "</h4>" not in self.wb[j]:
-                    j += 1
-                    t += " " + self.wb[j]
-                t = re.sub("<.*?>", " ", t)
-                t = re.sub(" +", " ", t)
-                r.append("             h4: {}".format(t))
-
-            m = re.search("<h5.*?>", line)
-            if m:
-                t = line
-                j = i
-                while "</h5>" not in self.wb[j]:
-                    j += 1
-                    t += " " + self.wb[j]
-                t = re.sub("<.*?>", " ", t)
-                t = re.sub(" +", " ", t)
-                r.append("               h5: {}".format(t))
-
-            m = re.search("<h6.*?>", line)
-            if m:
-                t = line
-                j = i
-                while "</h6>" not in self.wb[j]:
-                    j += 1
-                    t += " " + self.wb[j]
-                t = re.sub("<.*?>", " ", t)
-                t = re.sub(" +", " ", t)
-                r.append("                 h6: {}".format(t))                
+            if "<h" in self.wb[i]:  # look for any header tag
+                for lvl in range(1,6):  # which one?
+                    m = re.match("<h{}.*?>".format(lvl), self.wb[i])
+                    if m:
+                        # change opening heading temporarily
+                        self.wb[i] = re.sub(r"^<h{}".format(lvl), "<𝖧{}".format(lvl), self.wb[i])
+                        tfirst = i
+                        t = ""
+                        j = i
+                        try:
+                            while j < len(self.wb):
+                                if "<h" in self.wb[j]:
+                                    raise NestedHeadingError
+                                self.wb[j] = re.sub(r"^<𝖧", "<h", self.wb[j])
+                                t += " " + self.wb[j]
+                                if "</h{}>".format(lvl) in self.wb[j]:
+                                    break
+                                j += 1
+                        except Exception as e:
+                            self.fatal("{} error in processing h{} tag that started near line {}".format(e, lvl, tfirst+1))
+                        t = re.sub("<.*?>", " ", t)
+                        t = re.sub(" +", " ", t)
+                        t = t.strip()
+                        r.append("      " + "  "*lvl + "h{}: {}".format(lvl, t))
         self.apl(r)
 
     def preTags(self):
