@@ -783,10 +783,10 @@ class Pphtml:
         for i, line in enumerate(self.wb):
             if "<h" in self.wb[i]:  # look for any header tag
                 for lvl in range(1,6):  # which one?
-                    m = re.match("<h{}.*?>".format(lvl), self.wb[i])
+                    m = re.search("<h{}.*?>".format(lvl), self.wb[i])
                     if m:
                         # change opening heading temporarily
-                        self.wb[i] = re.sub(r"^<h{}".format(lvl), "<𝖧{}".format(lvl), self.wb[i])
+                        self.wb[i] = re.sub(r"<h{}".format(lvl), "<𝖧{}".format(lvl), self.wb[i], 1)
                         tfirst = i
                         t = ""
                         j = i
