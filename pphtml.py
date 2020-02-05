@@ -794,7 +794,7 @@ class Pphtml:
                             while j < len(self.wb):
                                 if "<h" in self.wb[j]:
                                     raise NestedHeadingError
-                                self.wb[j] = re.sub(r"^<𝖧", "<h", self.wb[j])
+                                self.wb[j] = re.sub(r"<𝖧", "<h", self.wb[j])
                                 t += " " + self.wb[j]
                                 if "</h{}>".format(lvl) in self.wb[j]:
                                     break
