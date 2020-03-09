@@ -20,6 +20,8 @@
     2019.12.13 ignore apparent targets in meta tags
     2019.12.15 ignore ">" and "<" before <body> for tag unwrap code
     2020.01.20 handle runaway heading tags
+    2020.02.28 early detection of superfluous ">" or "<" characters
+    2020.03.08 full HTML parser for document outline
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -32,7 +34,37 @@ import argparse
 from time import strftime
 import regex as re  # for unicode support  (pip install regex)
 from PIL import Image  # from pip install pillow
+from html.parser import HTMLParser
 
+showh = False
+thetag = ""
+theoutline = []
+
+class MyHTMLParser(HTMLParser):
+
+    def handle_starttag(self, tag, attrs):
+        global showh, thetag
+        if tag in "h1h2h3h4h5h6":
+            thetag = tag + ": "
+            showh = True
+
+    def handle_data(self, data):
+        global showh, thetag
+        if showh:    
+            thetag = thetag + " " + data
+           
+    def handle_endtag(self, tag):
+        global showh, thetag
+        if tag in "h1h2h3h4h5h6":
+            showh = False
+            thetag = thetag.rstrip()
+            thetag = re.sub(r'\s+', ' ', thetag)
+            m = re.match(r'h(\d)', thetag)
+            if m:
+                indent = "  " * int(m.group(1))
+            theoutline.append("     " + indent + thetag)
+
+parser = MyHTMLParser()
 
 class Pphtml:
     """
@@ -45,6 +77,7 @@ class Pphtml:
         """
         self.t = []  # report
         self.wb = []  # working (wrapped) text
+        self.wbuf = ""  # unwrapped text as string
         self.srcfile = args["infile"]
         self.outfile = args["outfile"]
         self.verbose = args["verbose"]
@@ -52,7 +85,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2020.01.20"
+        self.VERSION = "2020.03.08"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -60,6 +93,7 @@ class Pphtml:
         self.targets = {}
         self.udefcss = {}  # user defined CSS
         self.usedcss = {}  # CSS used by user
+        self.errormessage = ""  # for unwrap failure
 
     def crash(self):
         self.saveReport()
@@ -69,7 +103,7 @@ class Pphtml:
         """
         display (fatal) error and exit
         """
-        sys.stderr.write("fatal: " + message + "\r\n")
+        sys.stderr.write("error: " + message + "\r\n")
         exit(1)
 
     def ap(self, s):
@@ -91,51 +125,23 @@ class Pphtml:
         """
         empty = re.compile("^$")
         try:
-            wbuf = open(self.srcfile, "r", encoding="UTF-8").read()
+            self.wbuf = open(self.srcfile, "r", encoding="UTF-8").read()
             self.encoding = "UTF-8"
             # remove BOM on first line if present
-            t = ":".join("{0:x}".format(ord(c)) for c in wbuf[0])
+            t = ":".join("{0:x}".format(ord(c)) for c in self.wbuf[0])
             if t[0:4] == "feff":
-                if len(wbuf[0]) > 1:
-                    wbuf[0] = wbuf[0][1:]
+                if len(self.wbuf[0]) > 1:
+                    self.wbuf[0] = self.wbuf[0][1:]
                 else:
-                    wbuf = wbuf[1:]
+                    self.wbuf = self.wbuf[1:]
         except UnicodeDecodeError:
-            wbuf = open(self.srcfile, "r", encoding="Latin-1").read()
+            self.wbuf = open(self.srcfile, "r", encoding="Latin-1").read()
             self.encoding = "Latin-1"
         except:  # pylint: disable=bare-except
             self.fatal("loadFile: cannot open source file {}".format(self.srcfile))
-        self.wb = wbuf.split("\n")
+        self.wb = self.wbuf.split("\n")
         self.wb = [s.rstrip() for s in self.wb]
-              
-        # if any tags span two or more lines, unwrap them and leave blank lines
-        # so the line counter stays correct
-        i = 0
-        past_body = False
-        while (i < len(self.wb)):
-        
-            # ignore any ">" or "<" symbols that occur before the <body> tag
-            # this applies to anything in the CSS blocks.
-            if "<body" in self.wb[i]:
-                past_body = True
-            if not past_body:
-                i += 1
-                continue
-
-            try:
-                lbc = self.wb[i].count('<')
-                rbc = self.wb[i].count('>')
-                consume = 1
-                while lbc != rbc:
-                    self.wb[i] = self.wb[i]+" "+self.wb[i+consume]
-                    self.wb[i+consume] = ""
-                    lbc = self.wb[i].count('<')
-                    rbc = self.wb[i].count('>')
-                    consume += 1
-            except:
-                pass
-            i += 1
-        
+                     
         self.wb.append("")  # ensure file end
         while empty.match(self.wb[-1]):
             self.wb.pop()
@@ -769,43 +775,11 @@ class Pphtml:
         """
         show document
         """
-        
-        class Error(Exception):
-           """Base class for other exceptions"""
-           pass
-        class NestedHeadingError(Error):
-           """Raised when <h followed by another <h """
-           pass
-               
-        r = []
-        r.append("[info] document heading outline")
-
-        for i, line in enumerate(self.wb):
-            if "<h" in self.wb[i]:  # look for any header tag
-                for lvl in range(1,6):  # which one?
-                    m = re.search("<h{}.*?>".format(lvl), self.wb[i])
-                    if m:
-                        # change opening heading temporarily
-                        self.wb[i] = re.sub(r"<h{}".format(lvl), "<𝖧{}".format(lvl), self.wb[i], 1)
-                        tfirst = i
-                        t = ""
-                        j = i
-                        try:
-                            while j < len(self.wb):
-                                if "<h" in self.wb[j]:
-                                    raise NestedHeadingError
-                                self.wb[j] = re.sub(r"<𝖧", "<h", self.wb[j])
-                                t += " " + self.wb[j]
-                                if "</h{}>".format(lvl) in self.wb[j]:
-                                    break
-                                j += 1
-                        except Exception as e:
-                            self.fatal("{} error in processing h{} tag that started near line {}".format(e, lvl, tfirst+1))
-                        t = re.sub("<.*?>", " ", t)
-                        t = re.sub(" +", " ", t)
-                        t = t.strip()
-                        r.append("      " + "  "*lvl + "h{}: {}".format(lvl, t))
-        self.apl(r)
+        global theoutline
+        theoutline.append("[info] document heading outline")
+        self.wbuf2 = re.sub(r"&", "&amp;", self.wbuf)
+        parser.feed(self.wbuf2)
+        self.apl(theoutline)
 
     def preTags(self):
         """
@@ -1012,16 +986,27 @@ class Pphtml:
 
     def find_defined_CSS(self):
         """
-        CSS user has defined placed in udefcss map
+        CSS user has defined is placed in udefcss map
         """
-        t = []
+        t = [] # place to build a CSS block
         i = 0
 
-        while not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])) and i < len(self.wb):
+        while i < len(self.wb) and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])):
+            i += 1 # advance to <style type="text/css"> line
+        i += 1 # move into the CSS
+
+        while i < len(self.wb) and "</style>" not in self.wb[i]:
+            t.append(self.wb[i]) # append everything until the closing </style>
             i += 1
+
+        # there may be a user's second CSS block (as used by DPC)
+        # continue and look for another
+        
+        while i < len(self.wb) and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])):
+            i += 1  # advance; if no 2nd CSS will go to end
         i += 1
 
-        while "</style>" not in self.wb[i] and i < len(self.wb):
+        while i < len(self.wb) and "</style>" not in self.wb[i]:
             t.append(self.wb[i])
             i += 1
 
