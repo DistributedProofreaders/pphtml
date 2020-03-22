@@ -22,6 +22,7 @@
     2020.01.20 handle runaway heading tags
     2020.02.28 early detection of superfluous ">" or "<" characters
     2020.03.08 full HTML parser for document outline
+    2020.03.22 changed "should be..." message to use html entity
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -85,7 +86,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2020.03.08"
+        self.VERSION = "2020.03.22"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -728,7 +729,7 @@ class Pphtml:
                 if "end" not in t3:
                     r.append("       or")
                     r.append(
-                        "         Alice's Adventures in Wonderland, by Lewis Carroll—A"
+                        "         Alice's Adventures in Wonderland, by Lewis Carroll&mdash;A"
                         + " Project Gutenberg eBook"
                     )
             if t3.endswith("."):
