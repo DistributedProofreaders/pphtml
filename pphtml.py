@@ -86,7 +86,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2020.03.22"
+        self.VERSION = "2020.04.07"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -1204,10 +1204,10 @@ class Pphtml:
         for line in hdr:
             f1.write(line + "\n")
 
-        f1.write("*" * 80 + "<br />")
-        f1.write("* {:<76} *<br />".format("PPHTML RUN REPORT"))
-        f1.write("* {:>76} *<br />".format("started: " + self.NOW))
-        f1.write("*" * 80 + "<br />")
+        f1.write("*" * 80 + "\r\n")
+        f1.write("* {:<76} *\r\n".format("PPHTML RUN REPORT"))
+        f1.write("* {:>76} *\r\n".format("started: " + self.NOW))
+        f1.write("*" * 80 + "\r\n")
 
         f1.write("processing file: {}\r\n".format(os.path.basename(self.srcfile)))
         f1.write("pphtml version: {}\r\n".format(self.VERSION))
