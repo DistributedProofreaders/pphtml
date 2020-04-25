@@ -607,18 +607,17 @@ class Pphtml:
             if atarget not in alllinks:
                 if reported == 0:
                     r2[0] = "[info] targets not referenced with href"
-                reported += 1
                 if reported == report_limit:
                     stmp = stmp[:-2] + " ... more not reported" + "  "
                     reported += 1
                     continue
                 if reported > report_limit:
                     continue
-                if len(stmp) < 60:
-                    stmp += "{}, ".format(atarget)
-                else:
+                stmp += "{}, ".format(atarget)
+                if len(stmp) > 60:
                     r2.append("  {}".format(stmp[:-2]))
-                    stmp = "" 
+                    stmp = ""
+                reported += 1
         if stmp != "": # the final line of the targets report
             r2.append("  {}".format(stmp[:-2]))
         self.apl(r2)
