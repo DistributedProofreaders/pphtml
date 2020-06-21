@@ -67,7 +67,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2020.04.25"
+        self.VERSION = "2020.06.20"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -294,26 +294,37 @@ class Pphtml:
         show size of any > 100K
         """
         r = []
-        r.append("[pass] all images have file size &lt;= 200K")
+        r.append("[info] image file sizes")
         for fdata in self.filedata:
             fname = fdata.split("|")[0]
             fsize = os.path.getsize(self.sdir + "/images/{}".format(fname))
             self.fsizes.append([fname, fsize])
         self.fsizes.sort(key=lambda tup: tup[1], reverse=True)
-        toolargekb = []
-        largekb = []
+        under256K = []
+        above256K = []
+        above1M = []
         for item in self.fsizes:
-            if item[1] > 200 * 1024:
-                toolargekb.append(item)
-            else:
-                if item[1] > 100 * 1024:
-                    largekb.append(item)
-        if toolargekb:
+            if item[1] > 256 * 1024 and item[1] < 1024 * 1024:
+                above256K.append(item)
+            if item[1] <= 256 * 1024:
+                under256K.append(item)
+            if item[1] >= 1024 * 1024:
+                above1M.append(item)
+        if len(under256K) > 0:
             s = ""
-            for t in toolargekb:
-                s = "{} ({})".format(t[0], t[1])
+            for t in under256K:
+                s = "{} ({}K)".format(t[0], int(t[1]/1024))
                 r.append("  {}".format(s))
-                r[0] = re.sub("pass", "☰FAIL☷", r[0])
+        if len(above256K) > 0:
+            s = ""
+            for t in above256K:
+                s = "{} (☱{}K☷)".format(t[0], int(t[1]/1024))
+                r.append("  {}".format(s))
+        if len(above1M) > 0:
+            s = ""
+            for t in above1M:
+                s = "{} (☰{}K☷)".format(t[0], int(t[1]/1024))
+                r.append("  {}".format(s))
         self.apl(r)
 
     def imageSummary(self):
@@ -332,22 +343,33 @@ class Pphtml:
             I (32-bit signed integer pixels)
             F (32-bit floating point pixels)
         """
+        ity = {}
+        ity["1"] = "(1-bit pixels, black and white, stored with one pixel per byte)"
+        ity["L"] = "(8-bit pixels, black and white)"
+        ity["P"] = "(8-bit pixels, mapped to any other mode using a color palette)"
+        ity["RGB"] = "(3x8-bit pixels, true color)"
+        ity["RGBA"] = "(4x8-bit pixels, true color with transparency mask)"
+        ity["CMYK"] = "(4x8-bit pixels, color separation)"
+        ity["YCbCr"] = "(3x8-bit pixels, color video format)"
+        ity["LAB"] = "(3x8-bit pixels, the L*a*b color space)"
+        ity["HSV"] = "(3x8-bit pixels, Hue, Saturation, Value color space)"
+        ity["I"] = "(32-bit signed integer pixels)"
+        ity["F"] = "(32-bit floating point pixels)"        
+
         r = []
         r.append("[info] image summary")
-        r.append("❮table❯")
         for t in self.filedata:
             u = t.split("|")
-            r.append(
-                "❮tr❯❮td❯{}❮/td❯❮td❯{}❮/td❯❮td❯{}❮/td❯❮td❯{}❮/td❯❮/tr❯".format(
-                    u[0], u[1], u[2], u[3]
-                )
-            )
-        r.append("❮/table❯")
+            if u[3] in ity:
+                mappedu3 = ity[u[3]]
+            else:
+                mappedu3 = u[3]
+            r.append("    {}, {}, {} {}".format(u[0], u[2], u[1], mappedu3))
         self.apl(r)
 
     def coverImage(self):
         """
-        cover image width must be >=500 px and height must be <= 800 px
+        cover image width must be >=650 px and height must be >= 1000 px
         """
         r = []
         r.append("[pass] cover image dimensions check")
@@ -355,25 +377,16 @@ class Pphtml:
             u = t.split("|")
             if u[0] == "cover.jpg":
                 width, height = u[2].split("x")
-                if int(width) < 500:
+                if int(width) < 650 or int(height) < 1000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
                     r.append(
-                        "       cover.jpg cover dimension error (width {}px &lt; 500px)".format(
-                            width
-                        )
-                    )
-                if int(height) > 800:
-                    r[0] = re.sub("pass", "☰warn☷", r[0])
-                    r.append(
-                        "       cover.jpg cover dimension error (height {}px > 800px)".format(
-                            height
-                        )
+                        "       cover.jpg too small (actual: {}x{}, min: 650x1000)".format(width,height)
                     )
         self.apl(r)
 
     def otherImage(self):
         """
-        if not the cover, then max dimension must be <= 700px
+        if not the cover, then max dimension must be <= 5000x5000
         """
         r = []
         r.append("[pass] other image dimensions check")
@@ -381,17 +394,17 @@ class Pphtml:
             u = t.split("|")
             if u[0] != "cover.jpg":
                 width, height = u[2].split("x")
-                if int(width) > 700:
+                if int(width) > 5000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
                     r.append(
-                        "       {} dimension error (width {}px &gt; 700px)".format(
+                        "       {} dimension error (width {}px &gt; 5000px)".format(
                             u[0], width
                         )
                     )
-                if int(height) > 700:
+                if int(height) > 5000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
                     r.append(
-                        "       {} dimension error (height {}px &gt; 700px)".format(
+                        "       {} dimension error (height {}px &gt; 5000px)".format(
                             u[0], height
                         )
                     )
