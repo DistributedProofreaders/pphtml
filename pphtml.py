@@ -67,7 +67,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2020.06.20"
+        self.VERSION = "2020.07.24"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -948,20 +948,22 @@ class Pphtml:
 
     def classchcount(self):
         """
-        line length for epub must be less than 2000
-        """
+        class chapter count and h2 count
+        """      
         r = []
         r.append("[info] class chapter count and h2 count")
         cchcount = 0
         h2count = 0
         for line in self.wb:
-            # n = re.findall(r"class=[\"'].*?chapter.*?[\"']", line)
-            n = re.findall(r"class=[\"'][^\"']*?chapter.*?[\"']", line)
+            n = re.findall(r"class=[\"']\bchapter\b[\"']", line)
             cchcount += len(n)
             n = re.findall(r"<h2", line)
             h2count += len(n)
         r.append("       {} class chapter, {} &lt;h2> tags".format(cchcount, h2count))
         self.apl(r)
+        
+        
+        
 
     def pgTests(self):
         """
