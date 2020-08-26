@@ -4,6 +4,8 @@
 """
     pphtml.py
     GPL
+    https://github.com/asylumcs/pphtml
+    last edit: Wed, Aug 26, 2020 11:31 AM (rfrank)
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -1016,6 +1018,19 @@ class Pphtml:
         while i < len(self.wb) and "</style>" not in self.wb[i]:
             t.append(self.wb[i])
             i += 1
+
+        # strip out any comments in css
+        i = 0
+        while i < len(t):
+            if t[i].strip().startswith("/*") and t[i].strip().endswith("*/"):
+                del(t[i])
+                continue
+            if t[i].strip().startswith("/*"):
+                del(t[i])
+                while not t[i].strip().endswith("*/"):
+                    del(t[i])
+                del(t[i])   
+            i += 1                   
 
         # unwrap CSS
         i = 0
