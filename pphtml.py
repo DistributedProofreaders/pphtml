@@ -5,7 +5,7 @@
     pphtml.py
     GPL
     https://github.com/asylumcs/pphtml
-    last edit: Wed, Aug 26, 2020 11:31 AM (rfrank)
+    last edit: Sat, Sep 19, 2020 12:36 PM (rfrank)
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -1137,7 +1137,7 @@ class Pphtml:
         css_defined_not_used = False
         badk = []
         for key in self.udefcss:
-            if key not in self.usedcss:
+            if key != "x-ebookmaker" and key not in self.usedcss: # new 19-Sep-20
                 badk.append(key)
         if badk:
             css_defined_not_used = True
