@@ -1097,7 +1097,7 @@ class Pphtml:
         # show all CSS
         r.append("  defined CSS:")
         s = ""
-        for key in self.udefcss:
+        for key in sorted(self.udefcss):
             s = s + " " + key
             if len(s) > 60:
                 r.append("    " + s.strip())
@@ -1107,7 +1107,7 @@ class Pphtml:
 
         r.append("  used CSS:")
         s = ""
-        for key in self.usedcss:
+        for key in sorted(self.usedcss):
             s = s + " " + key
             if len(s) > 60:
                 r.append("    " + s.strip())
@@ -1125,7 +1125,7 @@ class Pphtml:
             css_used_not_defined = True
             s = ""
             r.append("  not defined but used:")
-            for k in badk:
+            for k in sorted(badk):
                 s = s + " " + k
                 if len(s) > 60:
                     r.append("    " + s.strip())
@@ -1143,7 +1143,7 @@ class Pphtml:
             css_defined_not_used = True
             s = ""
             r.append("  defined but not used:")
-            for k in badk:
+            for k in sorted(badk):
                 s = s + " " + k
                 if len(s) > 60:
                     r.append("    " + s.strip())
