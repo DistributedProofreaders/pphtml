@@ -34,9 +34,9 @@ class MyHTMLParser(HTMLParser):
 
     def handle_data(self, data):
         global showh, thetag
-        if showh:    
+        if showh:
             thetag = thetag + " " + data
-           
+
     def handle_endtag(self, tag):
         global showh, thetag
         if tag in "h1h2h3h4h5h6":
@@ -82,7 +82,7 @@ class Pphtml:
     def crash(self):
         self.saveReport()
         exit(1)
-    
+
     def fatal(self, message):
         """
         display (fatal) error and exit
@@ -125,7 +125,7 @@ class Pphtml:
             self.fatal("loadFile: cannot open source file {}".format(self.srcfile))
         self.wb = self.wbuf.split("\n")
         self.wb = [s.rstrip() for s in self.wb]
-                     
+
         self.wb.append("")  # ensure file end
         while empty.match(self.wb[-1]):
             self.wb.pop()
@@ -356,7 +356,7 @@ class Pphtml:
         ity["LAB"] = "(3x8-bit pixels, the L*a*b color space)"
         ity["HSV"] = "(3x8-bit pixels, Hue, Saturation, Value color space)"
         ity["I"] = "(32-bit signed integer pixels)"
-        ity["F"] = "(32-bit floating point pixels)"        
+        ity["F"] = "(32-bit floating point pixels)"
 
         r = []
         r.append("[info] image summary")
@@ -554,13 +554,13 @@ class Pphtml:
                 # have a link. put it in links map
                 # format is self.targets["ch1"] = "214"
                 # says the target "ch1" is on line "214"
-                # if the target "ch1" is on multiple lines, 
+                # if the target "ch1" is on multiple lines,
                 # self.targets["ch1"] = "214 378"
                 if theid in self.targets:
                     self.targets[theid] = "{} {}".format(self.targets[theid], i)
                 else:
                     self.targets[theid] = "{}".format(i)
-                    
+
         # allow name='' as an alternate to id=''
         for i, line in enumerate(self.wb):
             if "<meta" in line:
@@ -575,7 +575,7 @@ class Pphtml:
                         self.targets[theid] = "{} {}".format(self.targets[theid], i)
                 else:
                     self.targets[theid] = "{}".format(i)
-    
+
         for k, v in self.targets.items():
             # if there is a space then we have multiple targets, which is an error
             t = v.split(" ")
@@ -951,7 +951,7 @@ class Pphtml:
     def classchcount(self):
         """
         class chapter count and h2 count
-        """      
+        """
         r = []
         r.append("[info] class chapter count and h2 count")
         cchcount = 0
@@ -963,9 +963,9 @@ class Pphtml:
             h2count += len(n)
         r.append("       {} class chapter, {} &lt;h2> tags".format(cchcount, h2count))
         self.apl(r)
-        
-        
-        
+
+
+
 
     def pgTests(self):
         """
@@ -991,7 +991,7 @@ class Pphtml:
                     mx2 = mx.split(" ")
                     for mx3 in mx2:
                         if mx3 != "":
-                             self.usedcss[mx3] = 1                    
+                             self.usedcss[mx3] = 1
 
     def find_defined_CSS(self):
         """
@@ -1010,7 +1010,7 @@ class Pphtml:
 
         # there may be a user's second CSS block (as used by DPC)
         # continue and look for another
-        
+
         while i < len(self.wb) and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])):
             i += 1  # advance; if no 2nd CSS will go to end
         i += 1
@@ -1029,8 +1029,8 @@ class Pphtml:
                 del(t[i])
                 while not t[i].strip().endswith("*/"):
                     del(t[i])
-                del(t[i])   
-            i += 1                   
+                del(t[i])
+            i += 1
 
         # unwrap CSS
         i = 0
@@ -1137,7 +1137,7 @@ class Pphtml:
         css_defined_not_used = False
         badk = []
         for key in self.udefcss:
-            if key != "x-ebookmaker" and key not in self.usedcss: # new 19-Sep-20
+            if key not in self.usedcss:
                 badk.append(key)
         if badk:
             css_defined_not_used = True
@@ -1151,16 +1151,18 @@ class Pphtml:
             if s != "":
                 r.append("   " + s)
 
-        # adjust the message 
+        # adjust the message
 
-        if css_used_not_defined:
-            r[0] = re.sub(r"info", "☰FAIL☷", r[0])
-            r[0] = r[0] + " (CSS used but not defined)"
+        if css_used_not_defined or css_defined_not_used:
+            r[0] = re.sub(r"info", "☰warn☷", r[0])
+        s = ""
+        if css_used_not_defined and css_defined_not_used:
+            r[0] = r[0] + " (unused CSS, undefined CSS)"
         else:
+            if css_used_not_defined:
+                r[0] = r[0] + " (not defined but used)"
             if css_defined_not_used:
-                r[0] = re.sub(r"info", "☰warn☷", r[0])
-                r[0] = r[0] + " (CSS defined but not used)"
-
+                r[0] = r[0] + " (defined but not used)"
         self.apl(r)
 
     def testCSS(self):
