@@ -548,7 +548,7 @@ class Pphtml:
         for i, line in enumerate(self.wb):
             if "<meta" in line:
                 continue
-            theids = re.findall(r'id=["\'](.*?)["\']', line)
+            theids = re.findall(r'id\s?=\s?["\'](.*?)["\']', line)
             for theid in theids:
                 id_count += 1
                 # have a link. put it in links map
@@ -565,7 +565,7 @@ class Pphtml:
         for i, line in enumerate(self.wb):
             if "<meta" in line:
                 continue
-            theids = re.findall(r'name=["\'](.*?)["\']', line)
+            theids = re.findall(r'name\s?=\s?["\'](.*?)["\']', line)
             for theid in theids:
                 if theid in self.targets:
                     # the id might already be in the map if it's there from an id=
