@@ -3,9 +3,6 @@
 
 """
     pphtml.py
-    GPL
-    https://github.com/asylumcs/pphtml
-    last edit: Sat, Sep 19, 2020 12:36 PM (rfrank)
 """
 
 # pylint: disable=C0103, R0912, R0915
@@ -442,17 +439,27 @@ class Pphtml:
 
     def cleanExt(self):
         """
-        remove external links of the form:
+        report and remove external links of the form:
         href="https://www.gutenberg.org/files/55587/55587-h/55587-h.htm#Page_165"
+        ignore boilerplate links similar to:
+            "https://www.gutenberg.org", "https://www.gutenberg.org/donate"
         """
         r = []
         reported = False
         for i, line in enumerate(self.wb):
-            if re.search(r'<a href=[\'"]http.*?//.*?>', line):
+            m = re.search(r'<a href=([\'"]https?://.*?)>', line)
+            m1 = re.search(r'[\'"]https?://www.gutenberg.org[\'"]>', line)
+            m2 = re.search(r'[\'"]https?://www.gutenberg.org/donate/?[\'"]>', line)
+            if m:
+                if m1 or m2: # ignore boilerplate links
+                    continue
                 if not reported:
-                    r.append("[info] external links present, not followed")
+                    r.append("[info] unexpected external links present")
                     reported = True
-                    del self.wb[i]  # remove line containing external link
+                r.append("  " + m.group(1))
+                del self.wb[i]  # remove line containing external link
+        if not reported:
+            r.append("[pass] external links check")
         self.apl(r)
 
     def linkToCover(self):
