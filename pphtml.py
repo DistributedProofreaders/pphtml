@@ -66,7 +66,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2020.07.24"
+        self.VERSION = "2021.11.30"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -467,17 +467,38 @@ class Pphtml:
         either: provide a link in the document head, or
         put an id of coverpage on the img tag
         """
-        r = []
-        r.append("[pass] link to cover image for epub")
+        r = []  # place to build result message
+        r.append("[pass] link to cover image for epub") # initial message
+
+        # any of these will retain the pass message
+        # <img src='images/mycover.jpg' alt='' id='coverpage' />
+        # <link rel="icon" href="images/thecover.jpg" type="image/x-cover">
+        # an image in images folder named cover.jpg or cover.png
         coverlink = False
         i = 0
         while i < len(self.wb):
-            if "coverpage" in self.wb[i]:
+            m = re.search("id=['\"]coverpage['\"]", self.wb[i])
+            if m:
                 coverlink = True
+                r[0] += " (using coverlink id on image)"
+                break
+            m = re.search("rel=['\"]icon['\"]", self.wb[i])
+            if m:
+                coverlink = True
+                r[0] += " (using link rel='icon')"
                 break
             i += 1
+        for t in self.filedata:
+            u = t.split("|")
+            if u[0] == "cover.jpg" or u[0] == "cover.png":
+                coverlink = True
+                r[0] += f" (found {u[0]} in images folder)"
         if not coverlink:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
+        self.apl(r)
+
+    def linkCounts(self):
+        r = []
         r2 = []
         for k, v in self.links.items():
             t = v.split(" ")  # look for multiple lines with same target
@@ -654,6 +675,7 @@ class Pphtml:
 
         self.cleanExt()
         self.linkToCover()
+        self.linkCounts()
         self.findLinks()
         self.findTargets()
         self.doResolve()
@@ -832,31 +854,44 @@ class Pphtml:
 
     def DTDcheck(self):
         """
-        check for valid document type
+        check for valid document type header
+        must handle HTML4 or HTML5
         """
         r = []
-        r.append("[pass] Document Type Definition")
-        cline = ""
-        for i, line in enumerate(self.wb):
-            if "DTD" in line:
-                # find the DTD line and grab the next one
-                # where we expect it to end
-                cline = line
-                cline2 = self.wb[i + 1]
-                break
-        if cline == "":
+        r.append("[pass] Document Type Header")
+
+        isHTML4 = False
+        isHTML5 = False
+
+        # look for HTML4
+        if "DTD" in self.wb[0]:
+            isHTML4 = True
+        # look for HTML5
+        if "<!DOCTYPE html>" in self.wb[0]:
+            isHTML5 = True
+
+        if not isHTML4 and not isHTML5:
             r[0] = re.sub("pass", "☰FAIL☷", r[0])
-            r.append("       no Document Type Definition found")
-        else:
+            r.append("       Document Type Header not recognized")
+            self.apl(r)  # report
+            return
+
+        # here if we are HTML4 with "DTD" or or HTML5 with "DOCTYPE"
+        # additional processing before reporting
+
+        if isHTML4:
+            r[0] += " (file is HTML4)"
             # have the first line. if it's not a complete line, then
             # add the second with a '|'
+            cline = self.wb[0]
             if not cline.endswith(">"):
-                cline = cline + "|" + cline2
+                cline = cline + "|" + self.wb[1]
+
             # error if HTML version other than XHTML 1.0 Strict or 1.1
             # relies on the '|'
             if "XHTML 1.0 Strict" not in cline and "XHTML 1.1" not in cline:
                 r[0] = re.sub("pass", "☰warn☷", r[0])
-                r.append("       HTML version should be XHTML 1.0 Strict or 1.1")
+                r.append("       version should be XHTML 1.0 Strict or 1.1")
                 t001 = re.sub(r"\s+", " ", cline)
                 t001 = re.sub(r"<", "&lt;", t001)
                 if "|" in t001:
@@ -865,6 +900,9 @@ class Pphtml:
                     r.append("         {}".format(t002[1].strip()))
                 else:
                     r.append("         {}".format(t001.strip()))
+
+        if isHTML5:
+            r[0] += " (file is HTML5)"
 
         self.apl(r)
 
@@ -1007,19 +1045,25 @@ class Pphtml:
         t = [] # place to build a CSS block
         i = 0
 
-        while i < len(self.wb) and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])):
-            i += 1 # advance to <style type="text/css"> line
+        # advance to <style type="text/css"> or <style> line for HTML5
+        while i < len(self.wb) \
+          and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])) \
+          and not bool(re.search(r'<style>', self.wb[i])):
+            i += 1
         i += 1 # move into the CSS
 
         while i < len(self.wb) and "</style>" not in self.wb[i]:
             t.append(self.wb[i]) # append everything until the closing </style>
             i += 1
 
-        # there may be a user's second CSS block (as used by DPC)
+        # there may be a user's second CSS block (used by DPC, for one)
         # continue and look for another
 
-        while i < len(self.wb) and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])):
-            i += 1  # advance; if no 2nd CSS will go to end
+        # advance to next <style type="text/css"> or <style> line for HTML5
+        while i < len(self.wb) \
+          and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])) \
+          and not bool(re.search(r'<style>', self.wb[i])):
+            i += 1
         i += 1
 
         while i < len(self.wb) and "</style>" not in self.wb[i]:
@@ -1144,7 +1188,8 @@ class Pphtml:
         css_defined_not_used = False
         badk = []
         for key in self.udefcss:
-            if key not in self.usedcss:
+            # exclude x-ebookmaker used in PG projects
+            if key not in self.usedcss and key != "x-ebookmaker":
                 badk.append(key)
         if badk:
             css_defined_not_used = True
