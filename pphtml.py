@@ -1046,9 +1046,9 @@ class Pphtml:
         i = 0
 
         # advance to <style type="text/css"> or <style> line for HTML5
-        while i < len(self.wb) \
-          and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])) \
-          and not bool(re.search(r'<style>', self.wb[i])):
+        while ( i < len(self.wb)
+          and not re.search(r'style.*?type.*?text.*?css', self.wb[i])
+          and not re.search(r'<style>', self.wb[i]) ):
             i += 1
         i += 1 # move into the CSS
 
@@ -1060,9 +1060,9 @@ class Pphtml:
         # continue and look for another
 
         # advance to next <style type="text/css"> or <style> line for HTML5
-        while i < len(self.wb) \
-          and not bool(re.search(r'style.*?type.*?text.*?css', self.wb[i])) \
-          and not bool(re.search(r'<style>', self.wb[i])):
+        while ( i < len(self.wb)
+          and not re.search(r'style.*?type.*?text.*?css', self.wb[i])
+          and not re.search(r'<style>', self.wb[i]) ):
             i += 1
         i += 1
 
