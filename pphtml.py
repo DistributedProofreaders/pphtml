@@ -257,7 +257,7 @@ class Pphtml:
                     break
             if not isUsed:
                 r.append("  image '{}' in images folder not used in HTML".format(t))
-                r[0] = re.sub("pass", "☰FAIL☷", r[0])
+                r[0] = re.sub("pass", "☰warn☷", r[0])
         r[0] = r[0] + " ({} images)".format(count_images)
         self.apl(r)
 
@@ -446,8 +446,9 @@ class Pphtml:
         """
         r = []
         reported = False
+        count_ext = 0
         for i, line in enumerate(self.wb):
-            m = re.search(r'<a href=([\'"]https?://.*?)>', line)
+            m = re.search(r'<a href=([\'"]https?://.*?)>.*?</a>', line)
             m1 = re.search(r'[\'"]https?://www.gutenberg.org[\'"]>', line)
             m2 = re.search(r'[\'"]https?://www.gutenberg.org/donate/?[\'"]>', line)
             if m:
@@ -456,8 +457,13 @@ class Pphtml:
                 if not reported:
                     r.append("[info] unexpected external links present")
                     reported = True
-                r.append("  " + m.group(1))
-                del self.wb[i]  # remove line containing external link
+                if count_ext <= 10:
+                    r.append("  " + m.group(1))
+                if count_ext == 11:
+                    r.append("  (more external links not reported)")
+                count_ext += 1
+                # del self.wb[i]  # remove line containing external link
+                self.wb[i] = re.sub(m.group(0), "", self.wb[i])
         if not reported:
             r.append("[pass] external links check")
         self.apl(r)
@@ -771,27 +777,6 @@ class Pphtml:
                 r.append("  Information: title ends with full stop")
         self.apl(r)
 
-    def spaceClose(self):
-        """
-        verify self-closing tags are of the form <XX />
-        """
-        r = []
-        count = 0
-        r.append("[pass] self-closing tag format")
-
-        for line in self.wb:
-            m = re.search(r"\S/>", line)
-            if m:  # report only first five
-                line = line.replace("<", "&lt;")
-                if count == 0:
-                    r[0] = "[☰warn☷] missing space before /&gt; closing tag"
-                if count < 3:
-                    r.append(" " * 9 + line.strip())
-                if count == 5:
-                    r.append(" " * 9 + "... more")
-                count += 1
-        self.apl(r)
-
     def langCheck(self):
         """
         show user what document claims is the language
@@ -964,7 +949,6 @@ class Pphtml:
         self.ap("----- {} ".format(t) + "-" * (73 - len(t)))
 
         self.h1Title()
-        self.spaceClose()
         self.preTags()
         self.charsetCheck()
         self.DTDcheck()
@@ -973,25 +957,6 @@ class Pphtml:
         self.headingOutline()
 
     # --------------------------------------------------------------------------------------
-
-    def linelen(self):
-        """
-        line length for epub must be less than 2000
-        """
-        r = []
-        r.append("[pass] line length check (9999 &lt; 2000)")
-        maxlen = -1
-        # maxline = -1
-        for _, line in enumerate(self.wb):
-            if len(line) > maxlen:
-                maxlen = len(line)
-                # maxline = i + 1
-        if maxlen > 2000:
-            r[0] = re.sub(r"pass", "☰FAIL☷", r[0])
-            r[0] = re.sub(r"9999 &lt;", "{} >".format(maxlen), r[0])
-        else:
-            r[0] = re.sub(r"9999", "{}".format(maxlen), r[0])
-        self.apl(r)
 
     def classchcount(self):
         """
@@ -1009,9 +974,6 @@ class Pphtml:
         r.append("       {} class chapter, {} &lt;h2> tags".format(cchcount, h2count))
         self.apl(r)
 
-
-
-
     def pgTests(self):
         """
         consolidated tests particular to Project Gutenberg
@@ -1020,7 +982,6 @@ class Pphtml:
         t = "Project Gutenberg tests"
         self.ap("----- {} ".format(t) + "-" * (73 - len(t)))
 
-        self.linelen()
         self.classchcount()
 
     # --------------------------------------------------------------------------------------
@@ -1277,7 +1238,7 @@ class Pphtml:
         ]
 
         for line in hdr:
-            f1.write(line + "\n")
+            f1.write(line + "\r\n")
 
         f1.write("*" * 80 + "\r\n")
         f1.write("* {:<76} *\r\n".format("PPHTML RUN REPORT"))
