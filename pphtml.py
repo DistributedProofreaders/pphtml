@@ -7,45 +7,43 @@
 
 # pylint: disable=C0103, R0912, R0915
 # pylint: disable=too-many-instance-attributes, too-many-locals, no-self-use
-# pylint: disable=bad-continuation, too-many-lines, too-many-public-methods
 
 import sys
 import os
 import argparse
 from time import strftime
+from html.parser import HTMLParser
 import regex as re  # for unicode support  (pip install regex)
 from PIL import Image  # from pip install pillow
-from html.parser import HTMLParser
 
-showh = False
-thetag = ""
-theoutline = []
 
 class MyHTMLParser(HTMLParser):
 
+    def __init__(self):
+        super().__init__()
+        self.theoutline = ["[info] document heading outline"]
+        self.thetag = ""
+        self.showh = False
+
     def handle_starttag(self, tag, attrs):
-        global showh, thetag
         if tag in "h1h2h3h4h5h6":
-            thetag = tag + ": "
-            showh = True
+            self.thetag = tag + ": "
+            self.showh = True
 
     def handle_data(self, data):
-        global showh, thetag
-        if showh:
-            thetag = thetag + " " + data
+        if self.showh:
+            self.thetag = self.thetag + " " + data
 
     def handle_endtag(self, tag):
-        global showh, thetag
         if tag in "h1h2h3h4h5h6":
-            showh = False
-            thetag = thetag.rstrip()
-            thetag = re.sub(r'\s+', ' ', thetag)
-            m = re.match(r'h(\d)', thetag)
+            self.showh = False
+            self.thetag = self.thetag.rstrip()
+            self.thetag = re.sub(r'\s+', ' ', self.thetag)
+            m = re.match(r'h(\d)', self.thetag)
             if m:
                 indent = "  " * int(m.group(1))
-            theoutline.append("     " + indent + thetag)
+                self.theoutline.append("     " + indent + self.thetag)
 
-parser = MyHTMLParser()
 
 class Pphtml:
     """
@@ -66,7 +64,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2021.11.30"
+        self.VERSION = "2022.09.23"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -78,14 +76,14 @@ class Pphtml:
 
     def crash(self):
         self.saveReport()
-        exit(1)
+        sys.exit(1)
 
     def fatal(self, message):
         """
         display (fatal) error and exit
         """
         sys.stderr.write("error: " + message + "\r\n")
-        exit(1)
+        sys.exit(1)
 
     def ap(self, s):
         """
@@ -173,7 +171,6 @@ class Pphtml:
         self.ap("  number of h3 tags (usually sections): {}".format(count))
 
         self.ap("  pixels used for sizing (images and borders only):")
-        count = 0
         for line in self.wb:
             m = re.search(r"\d ?px", line)
             if m:
@@ -265,8 +262,7 @@ class Pphtml:
         """
         verify all target images in HTML available in images folder
         """
-        r = []
-        r.append("[pass] all target images in HTML available in images folder")
+        r = ["[pass] all target images in HTML available in images folder"]
 
         for line in self.wb:
             m = re.search(r"[\p{L}-_\d]+\.(jpg|jpeg|png)", line)
@@ -292,8 +288,7 @@ class Pphtml:
         warn if any image larger than 200K
         show size of any > 100K
         """
-        r = []
-        r.append("[info] image file sizes")
+        r = ["[info] image file sizes"]
         for fdata in self.filedata:
             fname = fdata.split("|")[0]
             fsize = os.path.getsize(self.sdir + "/images/{}".format(fname))
@@ -310,17 +305,14 @@ class Pphtml:
             if item[1] >= 1024 * 1024:
                 above1M.append(item)
         if len(under256K) > 0:
-            s = ""
             for t in under256K:
                 s = "{} ({}K)".format(t[0], int(t[1]/1024))
                 r.append("  {}".format(s))
         if len(above256K) > 0:
-            s = ""
             for t in above256K:
                 s = "{} (☱{}K☷)".format(t[0], int(t[1]/1024))
                 r.append("  {}".format(s))
         if len(above1M) > 0:
-            s = ""
             for t in above1M:
                 s = "{} (☰{}K☷)".format(t[0], int(t[1]/1024))
                 r.append("  {}".format(s))
@@ -342,21 +334,18 @@ class Pphtml:
             I (32-bit signed integer pixels)
             F (32-bit floating point pixels)
         """
-        ity = {}
-        ity["1"] = "(1-bit pixels, black and white, stored with one pixel per byte)"
-        ity["L"] = "(8-bit pixels, black and white)"
-        ity["P"] = "(8-bit pixels, mapped to any other mode using a color palette)"
-        ity["RGB"] = "(3x8-bit pixels, true color)"
-        ity["RGBA"] = "(4x8-bit pixels, true color with transparency mask)"
-        ity["CMYK"] = "(4x8-bit pixels, color separation)"
-        ity["YCbCr"] = "(3x8-bit pixels, color video format)"
-        ity["LAB"] = "(3x8-bit pixels, the L*a*b color space)"
-        ity["HSV"] = "(3x8-bit pixels, Hue, Saturation, Value color space)"
-        ity["I"] = "(32-bit signed integer pixels)"
-        ity["F"] = "(32-bit floating point pixels)"
+        ity = {"1": "(1-bit pixels, black and white, stored with one pixel per byte)",
+               "L": "(8-bit pixels, black and white)",
+               "P": "(8-bit pixels, mapped to any other mode using a color palette)",
+               "RGB": "(3x8-bit pixels, true color)",
+               "RGBA": "(4x8-bit pixels, true color with transparency mask)",
+               "CMYK": "(4x8-bit pixels, color separation)",
+               "YCbCr": "(3x8-bit pixels, color video format)",
+               "LAB": "(3x8-bit pixels, the L*a*b color space)",
+               "HSV": "(3x8-bit pixels, Hue, Saturation, Value color space)",
+               "I": "(32-bit signed integer pixels)", "F": "(32-bit floating point pixels)"}
 
-        r = []
-        r.append("[info] image summary")
+        r = ["[info] image summary"]
         for t in self.filedata:
             u = t.split("|")
             if u[3] in ity:
@@ -370,8 +359,7 @@ class Pphtml:
         """
         cover image width must be >=650 px and height must be >= 1000 px
         """
-        r = []
-        r.append("[pass] cover image dimensions check")
+        r = ["[pass] cover image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
             if u[0] == "cover.jpg":
@@ -379,7 +367,7 @@ class Pphtml:
                 if int(width) < 650 or int(height) < 1000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
                     r.append(
-                        "       cover.jpg too small (actual: {}x{}, min: 650x1000)".format(width,height)
+                        "       cover.jpg too small (actual: {}x{}, min: 650x1000)".format(width, height)
                     )
         self.apl(r)
 
@@ -387,8 +375,7 @@ class Pphtml:
         """
         if not the cover, then max dimension must be <= 5000x5000
         """
-        r = []
-        r.append("[pass] other image dimensions check")
+        r = ["[pass] other image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
             if u[0] != "cover.jpg":
@@ -473,8 +460,7 @@ class Pphtml:
         either: provide a link in the document head, or
         put an id of coverpage on the img tag
         """
-        r = []  # place to build result message
-        r.append("[pass] link to cover image for epub") # initial message
+        r = ["[pass] link to cover image for epub"]  # place to build result message
 
         # any of these will retain the pass message
         # <img src='images/mycover.jpg' alt='' id='coverpage' />
@@ -506,6 +492,7 @@ class Pphtml:
     def linkCounts(self):
         r = []
         r2 = []
+        reported = False
         for k, v in self.links.items():
             t = v.split(" ")  # look for multiple lines with same target
             if len(t) >= 2:
@@ -781,9 +768,7 @@ class Pphtml:
         """
         show user what document claims is the language
         """
-        r = []
-        count = 0
-        r.append("[user] please confirm the language code:")
+        r = ["[user] please confirm the language code:"]
         t = "  none specified"
         for line in self.wb:
             if re.search(r"<html.*?lang=", line):
@@ -796,18 +781,16 @@ class Pphtml:
         """
         show document
         """
-        global theoutline
-        theoutline.append("[info] document heading outline")
-        self.wbuf2 = re.sub(r"&", "&amp;", self.wbuf)
-        parser.feed(self.wbuf2)
-        self.apl(theoutline)
+        wbuf2 = re.sub(r"&", "&amp;", self.wbuf)
+        parser = MyHTMLParser()
+        parser.feed(wbuf2)
+        self.apl(parser.theoutline)
 
     def preTags(self):
         """
         no pre tags in HTML
         """
-        r = []
-        r.append("[pass] no &lt;pre> tags")
+        r = ["[pass] no &lt;pre> tags"]
         count = 0
         for line in self.wb:
             if "<pre" in line:
@@ -821,8 +804,7 @@ class Pphtml:
         """
         character set should be UTF-8
         """
-        r = []
-        r.append("[info] charset check")
+        r = ["[info] charset check"]
         cline = ""
         for line in self.wb:
             if "charset" in line:
@@ -842,8 +824,7 @@ class Pphtml:
         check for valid document type header
         must handle HTML4 or HTML5
         """
-        r = []
-        r.append("[pass] Document Type Header")
+        r = ["[pass] Document Type Header"]
 
         isHTML4 = False
         isHTML5 = False
@@ -895,8 +876,7 @@ class Pphtml:
         """
         all img tags get evaluated for alt behavior
         """
-        r = []
-        r.append("[pass] image alt tag tests")
+        r = ["[pass] image alt tag tests"]
         alt_is_missing = 0
         alt_is_empty = 0
         alt_is_blank = 0
@@ -962,8 +942,7 @@ class Pphtml:
         """
         class chapter count and h2 count
         """
-        r = []
-        r.append("[info] class chapter count and h2 count")
+        r = ["[info] class chapter count and h2 count"]
         cchcount = 0
         h2count = 0
         for line in self.wb:
@@ -997,7 +976,7 @@ class Pphtml:
                     mx2 = mx.split(" ")
                     for mx3 in mx2:
                         if mx3 != "":
-                             self.usedcss[mx3] = 1
+                            self.usedcss[mx3] = 1
 
     def find_defined_CSS(self):
         """
@@ -1008,8 +987,8 @@ class Pphtml:
 
         # advance to <style type="text/css"> or <style> line for HTML5
         while ( i < len(self.wb)
-          and not re.search(r'style.*?type.*?text.*?css', self.wb[i])
-          and not re.search(r'<style>', self.wb[i]) ):
+                and not re.search(r'style.*?type.*?text.*?css', self.wb[i])
+                and not re.search(r'<style>', self.wb[i]) ):
             i += 1
         i += 1 # move into the CSS
 
@@ -1103,11 +1082,9 @@ class Pphtml:
         usedcss and udefcss
         """
 
-        r = []
-        r.append("[info] CSS checks")
+        r = ["[info] CSS checks", "  defined CSS:"]
 
         # show all CSS
-        r.append("  defined CSS:")
         s = ""
         for key in sorted(self.udefcss):
             s = s + " " + key
@@ -1168,7 +1145,6 @@ class Pphtml:
 
         if css_used_not_defined or css_defined_not_used:
             r[0] = re.sub(r"info", "☰warn☷", r[0])
-        s = ""
         if css_used_not_defined and css_defined_not_used:
             r[0] = r[0] + " (unused CSS, undefined CSS)"
         else:
