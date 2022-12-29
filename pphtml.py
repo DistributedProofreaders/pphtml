@@ -64,7 +64,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2022.09.23"
+        self.VERSION = "2022.12.28"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -1119,7 +1119,7 @@ class Pphtml:
                 if len(s) > 60:
                     r.append("    " + s.strip())
                     s = ""
-            if s != "":
+            if s != "" and key != "x-ebookmaker-drop":
                 r.append("   " + s)
 
         # CSS defined but not used in a class

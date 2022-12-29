@@ -1,0 +1,13 @@
+*.bak
+*.zip
+*.epub
+*.mobi
+*.bk1
+*.bk2
+tmp*.*
+pp_test.*
+.idea/
+.vscode/
+__pycache__/
+doc/
+info/
