@@ -64,7 +64,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2022.09.23"
+        self.VERSION = "2022.12.28"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -1108,7 +1108,7 @@ class Pphtml:
         css_used_not_defined = False
         badk = {}
         for key in self.usedcss:
-            if key not in self.udefcss:
+            if key not in self.udefcss and not str(key).startswith("x-ebookmaker"):
                 badk[key] = 1
         if badk:
             css_used_not_defined = True
@@ -1127,7 +1127,7 @@ class Pphtml:
         badk = []
         for key in self.udefcss:
             # exclude x-ebookmaker used in PG projects
-            if key not in self.usedcss and key != "x-ebookmaker":
+            if key not in self.usedcss and not str(key).startswith("x-ebookmaker"):
                 badk.append(key)
         if badk:
             css_defined_not_used = True
