@@ -1108,7 +1108,7 @@ class Pphtml:
         css_used_not_defined = False
         badk = {}
         for key in self.usedcss:
-            if key not in self.udefcss and key != "x-ebookmaker-drop":
+            if key not in self.udefcss and not str(key).startswith("x-ebookmaker"):
                 badk[key] = 1
         if badk:
             css_used_not_defined = True
@@ -1127,7 +1127,7 @@ class Pphtml:
         badk = []
         for key in self.udefcss:
             # exclude x-ebookmaker used in PG projects
-            if key not in self.usedcss and key != "x-ebookmaker":
+            if key not in self.usedcss and not str(key).startswith("x-ebookmaker"):
                 badk.append(key)
         if badk:
             css_defined_not_used = True
