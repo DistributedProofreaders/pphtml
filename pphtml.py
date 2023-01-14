@@ -747,11 +747,9 @@ class Pphtml:
             r.append("       title: {}".format(t3))
             r.append("          h1: {}".format(t4))
 
-            if "Gutenberg" not in t3:
+            if not t3.endswith(" | Project Gutenberg"):
                 r.append("[☰warn☷] title should be of the form")
                 r.append("          Alice's Adventures in Wonderland | Project Gutenberg")
-            if t3.endswith("."):
-                r.append("  Information: title ends with full stop")
         self.apl(r)
 
     def langCheck(self):
