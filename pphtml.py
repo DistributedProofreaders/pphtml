@@ -64,7 +64,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2022.12.28"
+        self.VERSION = "2023.01.14"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -747,21 +747,9 @@ class Pphtml:
             r.append("       title: {}".format(t3))
             r.append("          h1: {}".format(t4))
 
-            if "Gutenberg" not in t3:
+            if not t3.endswith(" | Project Gutenberg"):
                 r.append("[☰warn☷] title should be of the form")
-                r.append(
-                    "         The Project Gutenberg eBook of Alice's Adventures in Wonderland,"
-                    + " by Lewis Carroll"
-                )
-                # avoid trap in WWer's software (addhd.c)
-                if "end" not in t3:
-                    r.append("       or")
-                    r.append(
-                        "         Alice's Adventures in Wonderland, by Lewis Carroll&mdash;A"
-                        + " Project Gutenberg eBook"
-                    )
-            if t3.endswith("."):
-                r.append("  Information: title ends with full stop")
+                r.append("          Alice's Adventures in Wonderland | Project Gutenberg")
         self.apl(r)
 
     def langCheck(self):
