@@ -64,7 +64,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2023.01.14"
+        self.VERSION = "2025.02.25"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -230,7 +230,7 @@ class Pphtml:
         # verify image files are jpg (reported as JPEG) or png
         for fd in self.filedata:
             t = fd.split("|")
-            if t[1] != "JPEG" and t[1] != "PNG":
+            if t[1] != "JPEG" and t[1] != "PNG" and t[1] != "SVG":
                 r.append("  file '{}' is of type {}".format(t[0], t[1]))
                 r[0] = re.sub("pass", "☰FAIL☷", r[0])
         self.apl(r)
@@ -265,7 +265,7 @@ class Pphtml:
         r = ["[pass] all target images in HTML available in images folder"]
 
         for line in self.wb:
-            m = re.search(r"[\p{L}-_\d]+\.(jpg|jpeg|png)", line)
+            m = re.search(r"[\p{L}-_\d]+\.(jpg|jpeg|png|svg)", line)
             if m:
                 filename = m[0]
                 foundit = False
@@ -276,7 +276,7 @@ class Pphtml:
                         break
                 if not foundit:
                     r.append(
-                        "  image '{}' referenced in HTML not images folder".format(
+                        "  image '{}' referenced in HTML, not found in images folder".format(
                             filename
                         )
                     )
@@ -357,17 +357,18 @@ class Pphtml:
 
     def coverImage(self):
         """
-        cover image width must be >=650 px and height must be >= 1000 px
+        cover image width should be >=1600 px and height should be >= 2560 px
+        https://www.pgdp.net/wiki/DP_Official_Documentation:PP_and_PPV/Post-Processing_FAQ#Cover_image
         """
         r = ["[pass] cover image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
-            if u[0] == "cover.jpg":
+            if u[0] == "cover.jpg" or u[0] == "cover.png":
                 width, height = u[2].split("x")
-                if int(width) < 650 or int(height) < 1000:
+                if int(width) < 1600 or int(height) < 2560:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
                     r.append(
-                        "       cover.jpg too small (actual: {}x{}, min: 650x1000)".format(width, height)
+                        "       cover.jpg too small (actual: {} ✕ {}, min: 1600 ✕ 2560 recommended)".format(width, height)
                     )
         self.apl(r)
 
@@ -378,7 +379,7 @@ class Pphtml:
         r = ["[pass] other image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
-            if u[0] != "cover.jpg":
+            if u[0] != "cover.jpg" and u[0] != "cover.png":
                 width, height = u[2].split("x")
                 if int(width) > 5000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
