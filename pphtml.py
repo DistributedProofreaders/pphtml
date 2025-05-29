@@ -227,10 +227,10 @@ class Pphtml:
                 r[0] = re.sub("pass", "☰FAIL☷", r[0])
 
         # information about all images are in self.filedata
-        # verify image files are jpg (reported as JPEG) or png
+        # verify image files are jpg (reported as JPEG), png, or svg
         for fd in self.filedata:
             t = fd.split("|")
-            if t[1] != "JPEG" and t[1] != "PNG" and t[1] != "SVG":
+            if t[1] not in ("JPEG", "PNG", "SVG"):
                 r.append("  file '{}' is of type {}".format(t[0], t[1]))
                 r[0] = re.sub("pass", "☰FAIL☷", r[0])
         self.apl(r)
@@ -276,7 +276,7 @@ class Pphtml:
                         break
                 if not foundit:
                     r.append(
-                        "  image '{}' referenced in HTML, not found in images folder".format(
+                        "  image '{}' referenced in HTML, but not found in images folder".format(
                             filename
                         )
                     )
@@ -363,7 +363,7 @@ class Pphtml:
         r = ["[pass] cover image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
-            if u[0] == "cover.jpg" or u[0] == "cover.png":
+            if u[0] in ("cover.jpg", "cover.png"):
                 width, height = u[2].split("x")
                 if int(width) < 1600 or int(height) < 2560:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
