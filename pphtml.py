@@ -511,7 +511,7 @@ class Pphtml:
         imagelink_count = 0
         oneiscover = ""
         for _, line in enumerate(self.wb):
-            therefs = re.findall(r'href=["\']images/(.*?)["\']', line)
+            therefs = re.findall(r'href\s*=\s*["\']images/(.*?)["\']', line)
             for theref in therefs:
                 if "cover." in theref:
                     oneiscover = theref
@@ -541,7 +541,7 @@ class Pphtml:
         r = []
         link_count = 0
         for i, line in enumerate(self.wb):
-            therefs = re.findall(r'href=["\']#(.*?)["\']', line)
+            therefs = re.findall(r'href\s*=\s*["\']#(.*?)["\']', line)
             for theref in therefs:
                 link_count += 1
                 tgt = theref
@@ -570,7 +570,7 @@ class Pphtml:
         for i, line in enumerate(self.wb):
             if "<meta" in line:
                 continue
-            theids = re.findall(r'id\s?=\s?["\'](.*?)["\']', line)
+            theids = re.findall(r'id\s*=\s*["\'](.*?)["\']', line)
             for theid in theids:
                 id_count += 1
                 # have a link. put it in links map
@@ -587,7 +587,7 @@ class Pphtml:
         for i, line in enumerate(self.wb):
             if "<meta" in line:
                 continue
-            theids = re.findall(r'name\s?=\s?["\'](.*?)["\']', line)
+            theids = re.findall(r'name\s*=\s*["\'](.*?)["\']', line)
             for theid in theids:
                 if theid in self.targets:
                     # the id might already be in the map if it's there from an id=
@@ -881,11 +881,11 @@ class Pphtml:
                 a01 = re.findall(r"alt=", line)
                 if not a01:
                     alt_is_missing += 1
-                a01 = re.findall(r"alt=['\"]['\"]", line)
+                a01 = re.findall(r"alt\s*=\s*['\"]['\"]", line)
                 alt_is_empty += len(a01)
-                a02 = re.findall(r"alt=['\"]\s+['\"]", line)
+                a02 = re.findall(r"alt\s*=\s*['\"]\s+['\"]", line)
                 alt_is_blank += len(a02)
-                a03 = re.findall(r"alt=(['\"])([^\1]+)\1", line)
+                a03 = re.findall(r"alt\s*=\s*(['\"])([^\1]+)\1", line)
                 alt_is_text += len(a03)
                 for t in a03:
                     if len(t) > maxalttextlen:
