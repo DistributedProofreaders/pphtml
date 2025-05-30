@@ -64,7 +64,7 @@ class Pphtml:
         self.sdir = ""  # to find the images
         self.encoding = ""
         self.NOW = strftime("%A, %Y-%m-%d %H:%M:%S")
-        self.VERSION = "2023.01.14"
+        self.VERSION = "2025.05.29"
         self.onlyfiles = []  # list of files in images folder
         self.filedata = []  # string of image file information
         self.fsizes = []  # image tuple sorted by decreasing size
@@ -227,10 +227,10 @@ class Pphtml:
                 r[0] = re.sub("pass", "☰FAIL☷", r[0])
 
         # information about all images are in self.filedata
-        # verify image files are jpg (reported as JPEG) or png
+        # verify image files are jpg (reported as JPEG), png, or svg
         for fd in self.filedata:
             t = fd.split("|")
-            if t[1] != "JPEG" and t[1] != "PNG":
+            if t[1] not in ("JPEG", "PNG", "SVG"):
                 r.append("  file '{}' is of type {}".format(t[0], t[1]))
                 r[0] = re.sub("pass", "☰FAIL☷", r[0])
         self.apl(r)
@@ -265,7 +265,7 @@ class Pphtml:
         r = ["[pass] all target images in HTML available in images folder"]
 
         for line in self.wb:
-            m = re.search(r"[\p{L}-_\d]+\.(jpg|jpeg|png)", line)
+            m = re.search(r"[\p{L}-_\d]+\.(jpg|jpeg|png|svg)", line)
             if m:
                 filename = m[0]
                 foundit = False
@@ -276,7 +276,7 @@ class Pphtml:
                         break
                 if not foundit:
                     r.append(
-                        "  image '{}' referenced in HTML not images folder".format(
+                        "  image '{}' referenced in HTML, but not found in images folder".format(
                             filename
                         )
                     )
@@ -357,18 +357,25 @@ class Pphtml:
 
     def coverImage(self):
         """
-        cover image width must be >=650 px and height must be >= 1000 px
+        cover image width should be >=1600 px and height should be >= 2560 px
+        https://www.pgdp.net/wiki/DP_Official_Documentation:PP_and_PPV/Post-Processing_FAQ#Cover_image
         """
         r = ["[pass] cover image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
-            if u[0] == "cover.jpg":
+            if u[0] in ("cover.jpg", "cover.png"):
                 width, height = u[2].split("x")
-                if int(width) < 650 or int(height) < 1000:
-                    r[0] = re.sub("pass", "☰warn☷", r[0])
-                    r.append(
-                        "       cover.jpg too small (actual: {}x{}, min: 650x1000)".format(width, height)
-                    )
+                if (int(width) <= int(height)):
+                    if int(width) < 1600 or int(height) < 2560:
+                        r[0] = re.sub("pass", "☰warn☷", r[0])
+                        r.append(
+                            f"       {u[0]} too small (actual: {width} ✕ {height}, min: 1600 ✕ 2560 recommended)"
+                        )
+                elif int(width) < 2560 or int(height) < 1600:
+                        r[0] = re.sub("pass", "☰warn☷", r[0])
+                        r.append(
+                            f"       {u[0]} too small (actual: {width} ✕ {height}, min: 2560 ✕ 1600 recommended)"
+                        )
         self.apl(r)
 
     def otherImage(self):
@@ -378,7 +385,7 @@ class Pphtml:
         r = ["[pass] other image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
-            if u[0] != "cover.jpg":
+            if u[0] not in ("cover.jpg", "cover.png"):
                 width, height = u[2].split("x")
                 if int(width) > 5000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
@@ -510,7 +517,7 @@ class Pphtml:
         imagelink_count = 0
         oneiscover = ""
         for _, line in enumerate(self.wb):
-            therefs = re.findall(r'href=["\']images/(.*?)["\']', line)
+            therefs = re.findall(r'href\s*=\s*["\']images/(.*?)["\']', line)
             for theref in therefs:
                 if "cover." in theref:
                     oneiscover = theref
@@ -540,7 +547,7 @@ class Pphtml:
         r = []
         link_count = 0
         for i, line in enumerate(self.wb):
-            therefs = re.findall(r'href=["\']#(.*?)["\']', line)
+            therefs = re.findall(r'href\s*=\s*["\']#(.*?)["\']', line)
             for theref in therefs:
                 link_count += 1
                 tgt = theref
@@ -569,7 +576,7 @@ class Pphtml:
         for i, line in enumerate(self.wb):
             if "<meta" in line:
                 continue
-            theids = re.findall(r'id\s?=\s?["\'](.*?)["\']', line)
+            theids = re.findall(r'id\s*=\s*["\'](.*?)["\']', line)
             for theid in theids:
                 id_count += 1
                 # have a link. put it in links map
@@ -586,7 +593,7 @@ class Pphtml:
         for i, line in enumerate(self.wb):
             if "<meta" in line:
                 continue
-            theids = re.findall(r'name\s?=\s?["\'](.*?)["\']', line)
+            theids = re.findall(r'name\s*=\s*["\'](.*?)["\']', line)
             for theid in theids:
                 if theid in self.targets:
                     # the id might already be in the map if it's there from an id=
@@ -880,11 +887,11 @@ class Pphtml:
                 a01 = re.findall(r"alt=", line)
                 if not a01:
                     alt_is_missing += 1
-                a01 = re.findall(r"alt=['\"]['\"]", line)
+                a01 = re.findall(r"alt\s*=\s*['\"]['\"]", line)
                 alt_is_empty += len(a01)
-                a02 = re.findall(r"alt=['\"]\s+['\"]", line)
+                a02 = re.findall(r"alt\s*=\s*['\"]\s+['\"]", line)
                 alt_is_blank += len(a02)
-                a03 = re.findall(r"alt=(['\"])([^\1]+)\1", line)
+                a03 = re.findall(r"alt\s*=\s*(['\"])([^\1]+)\1", line)
                 alt_is_text += len(a03)
                 for t in a03:
                     if len(t) > maxalttextlen:
