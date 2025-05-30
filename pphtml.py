@@ -385,7 +385,7 @@ class Pphtml:
         r = ["[pass] other image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
-            if u[0] not in ("cover.jpg", "cover.png":
+            if u[0] not in ("cover.jpg", "cover.png"):
                 width, height = u[2].split("x")
                 if int(width) > 5000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
