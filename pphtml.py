@@ -365,11 +365,17 @@ class Pphtml:
             u = t.split("|")
             if u[0] in ("cover.jpg", "cover.png"):
                 width, height = u[2].split("x")
-                if int(width) < 1600 or int(height) < 2560:
-                    r[0] = re.sub("pass", "☰warn☷", r[0])
-                    r.append(
-                        "       cover.jpg too small (actual: {} ✕ {}, min: 1600 ✕ 2560 recommended)".format(width, height)
-                    )
+                if (int(width) <= int(height)):
+                    if int(width) < 1600 or int(height) < 2560:
+                        r[0] = re.sub("pass", "☰warn☷", r[0])
+                        r.append(
+                            f"       {u[0]} too small (actual: {width} ✕ {height}, min: 1600 ✕ 2560 recommended)"
+                        )
+                elif int(width) < 2560 or int(height) < 1600:
+                        r[0] = re.sub("pass", "☰warn☷", r[0])
+                        r.append(
+                            f"       {u[0]} too small (actual: {width} ✕ {height}, min: 2560 ✕ 1600 recommended)"
+                        )
         self.apl(r)
 
     def otherImage(self):
@@ -379,7 +385,7 @@ class Pphtml:
         r = ["[pass] other image dimensions check"]
         for t in self.filedata:
             u = t.split("|")
-            if u[0] != "cover.jpg" and u[0] != "cover.png":
+            if u[0] not in ("cover.jpg", "cover.png":
                 width, height = u[2].split("x")
                 if int(width) > 5000:
                     r[0] = re.sub("pass", "☰warn☷", r[0])
