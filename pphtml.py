@@ -11,6 +11,8 @@
 import sys
 import os
 import argparse
+import itertools
+import roman
 from time import strftime
 from html.parser import HTMLParser
 import regex as re  # for unicode support  (pip install regex)
@@ -73,6 +75,8 @@ class Pphtml:
         self.udefcss = {}  # user defined CSS
         self.usedcss = {}  # CSS used by user
         self.errormessage = ""  # for unwrap failure
+        self.ranges_arabic = []
+        self.ranges_roman = []
 
     def crash(self):
         self.saveReport()
@@ -460,6 +464,115 @@ class Pphtml:
                 self.wb[i] = re.sub(m.group(0), "", self.wb[i])
         if not reported:
             r.append("[pass] external links check")
+        self.apl(r)
+
+    def documentInfo(self):
+        """
+        Section to contain general document information
+        """
+        self.ap("")
+        t = "document info"
+        self.ap("----- {} ".format(t) + "-" * (73 - len(t)))
+        self.findPageRanges()
+
+
+    def findPageRanges(self):
+        """
+        Find ranges of page locations for later reporting
+        """
+        r = []
+        pages_arabic = []
+        pages_roman = []
+
+        # Look for <a>, <div>, <span> with 'id' attribute; \3 is the match
+        pat1 = re.compile(r"""<(a|div|span)\s+[^>]*\bid=["'](page|pg)_?([\divxlcdm]+)["']""",
+                          re.IGNORECASE)
+        # Alternately: look for span class=pagenum; \1 is the match
+        pat2 = re.compile(r"""<span\s+[^>]*\bclass=["']pagenum['"].*>([^<]+)</span""",
+                          re.IGNORECASE)
+
+        for line in self.wb:
+            m = pat1.search(line)
+            if m:
+                if m.group(3).isnumeric():
+                    pages_arabic.append(int(m.group(3)))
+                else:
+                    try:
+                        n = roman.fromRoman(m.group(3))
+                        pages_roman.append(m.group(3))
+                    except roman.InvalidRomanNumeralError:
+                        # we tried...
+                        continue
+
+                # don't check the same line again if it already matched
+                continue
+
+            m = pat2.search(line)
+            if m:
+                text = m.group(1)
+                text = text.replace("Page_", "")
+                text = text.replace("page_", "")
+                text = text.replace("page", "")
+                text = text.replace("[", "")
+                text = text.replace("]", "")
+                text = text.replace("p.", "")
+                text = text.replace("P.", "")
+                text = text.replace("Pg.", "")
+                text = text.replace("Pg", "")
+                text = text.strip()
+
+                if m.group(1).isnumeric():
+                    pages_arabic.append(int(m.group(1)))
+                else:
+                    try:
+                        n = roman.fromRoman(m.group(3))
+                        pages_roman.append(m.group(3))
+                    except roman.InvalidRomanNumeralError:
+                        # we tried...
+                        continue
+
+        # Create ranges
+        # Uses Python magic to go from [1,2,5,6,7] to [[1,2],[5,7]]
+
+        # Arabic
+        R = (list(x) for _, x in itertools.groupby(pages_arabic, lambda x, c=itertools.count(): next(c)-x))
+        self.ranges_arabic = [[r[0], r[-1]] for r in R]
+        last = -1
+        for myrange in self.ranges_arabic:
+            page_l, page_h = myrange
+
+            if page_h == last:
+                myrange.append("Page (or set of pages) is duplicated")
+            elif page_h < last:
+                myrange.append("Page (or set of pages) is out of sequence")
+            else:
+                myrange.append(None)
+
+            last = page_h
+
+        # Roman
+        R = (list(x) for _, x in itertools.groupby(pages_roman, lambda x, c=itertools.count(): next(c)-roman.fromRoman(x.upper())))
+        self.ranges_roman = [[r[0], r[-1]] for r in R]
+        last = -1
+        for myrange in self.ranges_roman:
+            page_l, page_h = myrange
+
+            if roman.fromRoman(page_h.upper()) == last:
+                myrange.append("Page (or set of pages) is duplicated")
+            elif roman.fromRoman(page_h.upper()) < last:
+                myrange.append("Page (or set of pages) is out of sequence")
+            else:
+                myrange.append(None)
+
+            last = roman.fromRoman(page_h.upper())
+
+        r.append("[info] page numbers ( roman): " +
+            ", ".join([f"{r[0]}–{r[1]}" for r in self.ranges_roman])
+        )
+        r.append("[info] page numbers (arabic): " +
+            ", ".join([f"{r[0]}–{r[1]}" for r in self.ranges_arabic])
+        )
+
         self.apl(r)
 
     def linkToCover(self):
@@ -1255,6 +1368,7 @@ class Pphtml:
         """
 
         self.loadFile()
+        self.documentInfo()
         self.imageTests()
         self.linkTests()
         self.ppvTests()
