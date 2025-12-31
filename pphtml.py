@@ -8,15 +8,16 @@
 # pylint: disable=C0103, R0912, R0915
 # pylint: disable=too-many-instance-attributes, too-many-locals, no-self-use
 
-import sys
-import os
 import argparse
 import itertools
-import roman
-from time import strftime
+import os
+import sys
 from html.parser import HTMLParser
-import regex as re  # for unicode support  (pip install regex)
+from time import strftime
+
 from PIL import Image  # from pip install pillow
+import regex as re  # for unicode support  (pip install regex)
+import roman  # for pphtml
 
 
 class MyHTMLParser(HTMLParser):
