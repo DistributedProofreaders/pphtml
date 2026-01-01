@@ -567,12 +567,23 @@ class Pphtml:
 
             last = roman.fromRoman(page_h.upper())
 
-        r.append("[info] page numbers ( roman): " +
-            ", ".join([f"{r[0]}–{r[1]}" for r in self.ranges_roman])
-        )
-        r.append("[info] page numbers (arabic): " +
-            ", ".join([f"{r[0]}–{r[1]}" for r in self.ranges_arabic])
-        )
+        # render found page ranges list (roman)
+        _rbuf = []
+        for _r in self.ranges_roman:
+            if _r[0] == _r[1]:
+                _rbuf.append(_r[0])
+            else:
+                _rbuf.append(f"{_r[0]}–{_r[1]}")
+        r.append(f"[info] page numbers ( roman): {', '.join(_rbuf)}")
+
+        # render found page ranges list (arabic)
+        _abuf = []
+        for _a in self.ranges_arabic:
+            if _a[0] == _a[1]:
+                _abuf.append(str(_a[0]))
+            else:
+                _abuf.append(f"{_a[0]}–{_a[1]}")
+        r.append(f"[info] page numbers (arabic): {', '.join(_abuf)}")
 
         self.apl(r)
 
