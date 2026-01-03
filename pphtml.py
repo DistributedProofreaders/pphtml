@@ -526,8 +526,8 @@ class Pphtml:
                     pages_arabic.append(int(m.group(1)))
                 else:
                     try:
-                        n = roman.fromRoman(m.group(3))
-                        pages_roman.append(m.group(3))
+                        n = roman.fromRoman(m.group(1))
+                        pages_roman.append(m.group(1))
                     except roman.InvalidRomanNumeralError:
                         # we tried...
                         continue
