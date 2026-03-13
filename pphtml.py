@@ -10,6 +10,7 @@
 
 import argparse
 import itertools
+import json
 import os
 import sys
 from html.parser import HTMLParser
@@ -884,17 +885,76 @@ class Pphtml:
                 r.append("          Alice's Adventures in Wonderland | Project Gutenberg")
         self.apl(r)
 
-    def langCheck(self):
+    def load_language_registry(self):
         """
-        show user what document claims is the language
+        Load the IANA language subtag registry from a pre-built JSON file.
+        Returns a dict mapping lowercase subtag -> list of description strings.
         """
-        r = ["[user] please confirm the language code:"]
-        t = "  none specified"
+        json_path = os.path.join(self.root, "language-subtag-registry.json")
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except OSError:
+            return {}
+
+    def lang_check(self):
+        """
+        Find the document's main language and all other languages used,
+        look up their names in the IANA registry, and report.
+        """
+        r = []
+
+        lang_map = self.load_language_registry()
+
+        def lang_name(code):
+            """
+            Given a code (e.g. 'en') return language name (e.g. 'English').
+            Some codes have multiple names; if so, join them with a comma.
+            """
+            primary = code.lower().split("-")[0]
+            names = lang_map.get(primary, [])
+            return ", ".join(names)
+
+        # Find main document language from <html lang="...">
+        main_lang = ""
         for line in self.wb:
-            if re.search(r"<html.*?lang=", line):
-                t = line.replace("<", "&lt;")
+            m = re.search(r'<html[^>]*\blang=["\']([^"\']+)["\']', line)
+            if m:
+                main_lang = m.group(1)
                 break
-        r.append("       {}".format(t))
+
+        # Collect all lang attribute values in the document
+        all_langs = set()
+        for line in self.wb:
+            found = re.findall(r'\blang=["\']([^"\']+)["\']', line)
+            # Ignore if this is the <html> tag. We found that already,
+            # and don't want to re-report the main document language.
+            # However, if any elements are tagged with the main document
+            # language, they will still end up on the secondary language
+            # list that way.
+            if re.search(r'<html', line):
+                continue
+            for lang in found:
+                all_langs.add(lang)
+
+        other_langs = sorted(all_langs)
+
+        if main_lang:
+            name = lang_name(main_lang)
+            if name:
+                r.append(f"[pass] document language: {main_lang} ({name})")
+            else:
+                r.append(f"[☰warn☷] document language: {main_lang} (☱unknown☷)")
+        else:
+            r.append("[☰FAIL☷] document language: none specified")
+        if other_langs:
+            r.append("[info] other languages:")
+            for lang in other_langs:
+                name = lang_name(lang)
+                if name:
+                    r.append(f"          {lang} ({name})")
+                else:
+                    r.append(f"          {lang} (☱unknown☷)")
         self.apl(r)
 
     def headingOutline(self):
@@ -1053,7 +1113,7 @@ class Pphtml:
         self.charsetCheck()
         self.DTDcheck()
         self.altTags()
-        self.langCheck()
+        self.lang_check()
         self.headingOutline()
 
     # --------------------------------------------------------------------------------------
