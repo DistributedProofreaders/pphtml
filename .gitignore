@@ -11,3 +11,4 @@ pp_test.*
 __pycache__/
 doc/
 info/
+/language-subtag-registry
