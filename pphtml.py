@@ -13,6 +13,7 @@ import itertools
 import json
 import os
 import sys
+from html import unescape
 from html.parser import HTMLParser
 from time import strftime
 
@@ -957,6 +958,90 @@ class Pphtml:
                     r.append(f"          {lang} (☱unknown☷)")
         self.apl(r)
 
+    def lang_report(self):
+        """
+        Report all elements with an explicit lang attribute, showing
+        tag name, language code, and text content, sorted three ways.
+        """
+        # Collect (tag, lang, content) tuples for elements with explicit lang attrs.
+        # Use wbuf (whole file) to handle multi-line elements.
+        # Skip the <html> tag itself.
+        items = []
+        for m in re.finditer(
+            r'<(?!html\b)(\w+)\b([^>]*?\blang=["\']([^"\']+)["\'][^>]*)>(.*?)</\1>',
+            self.wbuf,
+            flags=re.DOTALL,
+        ):
+            tag = m.group(1)
+            lang = m.group(3)
+            raw_content = m.group(4)
+            # Strip inner HTML tags to get text only
+            text = re.sub(r'<[^>]+>', '', raw_content)
+            # Decode HTML entities
+            text = unescape(text)
+            # Normalize whitespace
+            text = re.sub(r'\s+', ' ', text).strip()
+            if text:
+                items.append((tag, lang, text))
+
+        # Deduplicate while preserving tuple structure
+        items = sorted(set(items))
+
+        r = [f"[info] lang attribute report\n       {len(items)} unique elements with 'lang' attribute"]
+        if not items:
+            self.apl(r)
+            return
+
+        # In verbose mode, report everything (can be lengthy)
+        if self.verbose:
+            # Determine column widths
+            tag_w = max(len(tag) for tag, _, _ in items)
+            lang_w = max(len(lang) for _, lang, _ in items)
+
+            def fmt(tag, lang, text):
+                return f"         {tag:<{tag_w}}  {lang:<{lang_w}}  {text}"
+
+            # Sort 1: by tag, then language, then content (case-insensitive)
+            r.append("")
+            r.append("       sorted by tag, then language:")
+            for tag, lang, text in sorted(
+                items, key=lambda x: (x[0].lower(), x[1].lower(), x[2].lower())
+            ):
+                r.append(fmt(tag, lang, text))
+
+            # Sort 2: by content (case-insensitive)
+            r.append("")
+            r.append("       sorted by content:")
+            for tag, lang, text in sorted(
+                items, key=lambda x: x[2].lower()
+            ):
+                r.append(fmt(tag, lang, text))
+
+            # Sort 3: by language, then content (case-insensitive)
+            r.append("")
+            r.append("       sorted by language, then content:")
+            for tag, lang, text in sorted(
+                items, key=lambda x: (x[1].lower(), x[2].lower())
+            ):
+                r.append(fmt(tag, lang, text))
+
+        # If not verbose, report only a count of tags using each language
+        else:
+            lang_counts = {}
+            for tag, lang, text in sorted(
+                items, key=lambda x: (x[1].lower(), x[2].lower())
+            ):
+                if lang in lang_counts:
+                    lang_counts[lang] += 1
+                else:
+                    lang_counts[lang] = 1
+
+            for lang in sorted(lang_counts):
+                times_label = "times" if lang_counts[lang] > 1 else "time"
+                r.append(f"         lang={lang} seen {lang_counts[lang]} {times_label}")
+
+        self.apl(r)
+
     def headingOutline(self):
         """
         show document
@@ -1114,6 +1199,7 @@ class Pphtml:
         self.DTDcheck()
         self.altTags()
         self.lang_check()
+        self.lang_report()
         self.headingOutline()
 
     # --------------------------------------------------------------------------------------
