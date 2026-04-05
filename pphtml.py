@@ -1115,6 +1115,24 @@ class Pphtml:
         self.altTags()
         self.lang_check()
         self.headingOutline()
+        self.inlineStyles()
+
+    # --------------------------------------------------------------------------------------
+
+    def inlineStyles(self):
+        """
+        report all HTML tags that use the style attribute (inline styles)
+        """
+        r = []
+
+        for i, line in enumerate(self.wb):
+            for m in re.finditer(r'<(\w+)[^>]*\bstyle\s*=\s*(["\'])(.*?)\2', line):
+                tag = m.group(1)
+                style = m.group(3)
+                r.append("         line {:>5}: &lt;{}&gt; {}".format(i + 1, tag, style))
+
+        r.insert(0, "[info] inline styles found" if r else "[pass] no inline styles found")
+        self.apl(r)
 
     # --------------------------------------------------------------------------------------
 
